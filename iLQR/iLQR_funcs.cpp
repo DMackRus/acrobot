@@ -23,10 +23,8 @@ float epsConverge = 0.005;
 bool costFunctionFD = false;
 m_dof nextControlSequence;
 
-
-//float controlCost[DOF] = {0.0001, 0.0001, 0.0001, 0.0001, 0.00005, 0.00005, 0.00005};
-float controlCost[NUM_DOF] = {0.1};
-float stateCosts[NUM_STATES] = {3, 0, 0.1, 0.1};
+float controlCost[NUM_DOF] = {1};
+float stateCosts[NUM_STATES] = {1, 1, 0.1, 0.1};
 float terminalScalarConstant = 4;
 
 /**************************************************************************
@@ -36,7 +34,7 @@ float terminalScalarConstant = 4;
  *
  */
 
-int torqueLims[NUM_DOF] = {20};
+int torqueLims[NUM_DOF] = {100};
 
 int baseStateIndex = 1;
 int initStateIndex = 0;
@@ -44,6 +42,8 @@ int initStateIndex = 0;
 m_state X_desired;
 m_dof_dof R;
 m_state_state Q;
+m_state q;
+m_dof r;
 m_state_state Q_term;
 m_dof_dof Z;
 
@@ -78,22 +78,24 @@ void lineariseDynamicsParallel(Ref<m_state> currentState, Ref<m_dof> currentCont
     using u_t = Differentiator<degreesOfFreedom, controls>::u_t;
 
     // bind data to eigen
-    Eigen::Map<Eigen::VectorXd> qStar(mdata->qpos, model->nv);
-    Eigen::Map<Eigen::VectorXd> qvelStar(mdata->qvel, model->nv);
-    Eigen::Map<Eigen::VectorXd> ctrlStar(mdata->ctrl, model->nu);
+//    Eigen::Map<Eigen::VectorXd> qStar(mdata->qpos, model->nv);
+//    Eigen::Map<Eigen::VectorXd> qvelStar(mdata->qvel, model->nv);
+//    Eigen::Map<Eigen::VectorXd> ctrlStar(mdata->ctrl, model->nu);
 
     // change controls
-    globalMujocoController->setSystemState(currentState);
-    mdata->ctrl[0] = currentControls(0);
-    ctrlStar = currentControls.array() - 0.1;
+    //globalMujocoController->setSystemState(currentState);
+    //CHANGE THIS TO DYNAMIC CURRENT CONTROL!!
+    //mdata->ctrl[0] = currentControls(0);
+//    ctrlStar = currentControls.array() - 0.1;
 
-    // save first state and contorls
-//    cout << "qStar" << qStar << endl;
-//    cout << "qvelStar" << qvelStar << endl;
-    x_t x_star;
-//    cout << "x_star" << x_star << endl;
-    x_star << qStar, qvelStar;
-    u_t u_star; u_star << ctrlStar;
+//    // save first state and contorls
+////    cout << "qStar" << qStar << endl;
+////    cout << "qvelStar" << qvelStar << endl;
+//    x_t x_star;
+////    cout << "x_star" << x_star << endl;
+//    x_star << qStar, qvelStar;
+//    u_t u_star; u_star << ctrlStar;
+    //cout << "current state is " << globalMujocoController->returnSystemState() << endl;
 
     // linearize around set state and contorl
     stepCostFn_t stepCostFn = stepCost;
@@ -318,8 +320,8 @@ void stepSimulation(const Ref<m_state> currentState, const Ref<m_dof> U, Ref<m_s
 
 //    cout << "old state" << endl;
 //    cout << currentState << endl;
-//    cout << "new state " << endl;
-//    cout << Xnew << endl;
+    cout << "new state " << endl;
+    cout << Xnew << endl;
 
 //    cout << "robot acc after:" << endl;
 //    cout << acc << endl;
@@ -357,12 +359,16 @@ float rollOutTrajectory(const Ref<const m_state> X0, m_state *X, m_dof *U, int n
     m_dof l_u;
     m_dof_dof l_uu;
 
+    m_state initStateRollout = globalMujocoController->returnSystemState();
+
+    //cout << "init rollout state: " << endl << initStateRollout << endl;
+
     for(int i = 0; i < numControls; i++){
         // Calculate cost associated with current state Xt and current control Ut
 
 //        cout << "Current control in rollout, iteration: " << i << " " << U[i] << endl;
 //        cout << "Current state in rollout, iteration: " << i << " " << X[i] << endl;
-        l = immediateCost(X[i], X[i+1], U[i], i);
+        l = immediateCost(X[i], U[i], i);
         cost += (l * dt);
 
         // Step simulation set number of times
@@ -372,28 +378,32 @@ float rollOutTrajectory(const Ref<const m_state> X0, m_state *X, m_dof *U, int n
         }
 
         if(RENDER_ROLLOUTS){
-            mjrRect viewport = { 0, 0, 0, 0 };
-            glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+            if(i % 10 == 0){
+                mjrRect viewport = { 0, 0, 0, 0 };
+                glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
 
-            // update scene and render
-            mjv_updateScene(model, mdata, &opt, NULL, &cam, mjCAT_ALL, &scn);
-            mjr_render(viewport, &scn, &con);
+                // update scene and render
+                mjv_updateScene(model, mdata, &opt, NULL, &cam, mjCAT_ALL, &scn);
+                mjr_render(viewport, &scn, &con);
 
-            // swap OpenGL buffers (blocking call due to v-sync)
-            glfwSwapBuffers(window);
+                // swap OpenGL buffers (blocking call due to v-sync)
+                glfwSwapBuffers(window);
 
-            // process pending GUI events, call GLFW callbacks
-            glfwPollEvents();
+                // process pending GUI events, call GLFW callbacks
+                glfwPollEvents();
+            }
+
         }
 
         // update new state variable Xt+1
         X[i+1] = globalMujocoController->returnSystemState();
+        //cout << "state is " << endl << X[i+1] << endl;
 
     }
     return cost;
 }
 
-float immediateCost(const Ref<const m_state> X, const Ref<const m_state> X_next, const Ref<const m_dof> U, int controlNum){
+float immediateCost(const Ref<const m_state> X, const Ref<const m_dof> U, int controlNum){
     float cost;
     float eps = 1e-1;
     m_state X_diff;
@@ -401,12 +411,12 @@ float immediateCost(const Ref<const m_state> X, const Ref<const m_state> X_next,
     // actual - desired
     X_diff = X - X_desired;
 
-    cost = calcStateCost(X, X_next, controlNum) + calcControlCost(U);
+    cost = calcStateCost(X, controlNum) + calcControlCost(U);
 
     return cost;
 }
 
-float immediateCostAndDerivitives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref<m_dof> l_u, Ref<m_dof_dof> l_uu, const Ref<const m_state> X, const Ref<const m_state> X_next, const Ref<const m_dof> U, int controlNum){
+float immediateCostAndDerivitives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref<m_dof> l_u, Ref<m_dof_dof> l_uu, const Ref<const m_state> X, const Ref<const m_dof> U, int controlNum){
     float cost;
     float eps = 1e-1;
     m_state X_diff;
@@ -414,10 +424,10 @@ float immediateCostAndDerivitives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref
     // actual - desired
     X_diff = X - X_desired;
 
-    cost = calcStateCost(X, X_next, controlNum) + calcControlCost(U);
+    cost = calcStateCost(X, controlNum) + calcControlCost(U);
 
     if(costFunctionFD){
-        l_x = costFirstOrderDerivitives(X, X_next, controlNum);
+        l_x = costFirstOrderDerivitives(X, controlNum);
         for(int i = 0; i < NUM_STATES; i++){
             m_state X_inc = X.replicate(1, 1);
             m_state X_dec = X.replicate(1, 1);
@@ -425,10 +435,10 @@ float immediateCostAndDerivitives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref
             X_inc(i) += eps;
             X_dec(i) -= eps;
 
-            m_state l_x_inc = costFirstOrderDerivitives(X_inc, X_next, controlNum);
+            m_state l_x_inc = costFirstOrderDerivitives(X_inc, controlNum);
 //        cout << "l_x_inc" << endl;
 //        cout << l_x_inc << endl;
-            m_state l_x_dec = costFirstOrderDerivitives(X_dec, X_next, controlNum);
+            m_state l_x_dec = costFirstOrderDerivitives(X_dec, controlNum);
 //        cout << "l_x_dec" << endl;
 //        cout << l_x_dec << endl;
 
@@ -468,7 +478,7 @@ float immediateCostAndDerivitives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref
 }
 
 
-m_state costFirstOrderDerivitives(const Ref<const m_state> X, m_state X_next, int controlNum){
+m_state costFirstOrderDerivitives(const Ref<const m_state> X, int controlNum){
     m_state l_x;
     m_state X_inc;
     m_state X_dec;
@@ -481,8 +491,8 @@ m_state costFirstOrderDerivitives(const Ref<const m_state> X, m_state X_next, in
         X_inc(i) += eps;
         X_dec(i) -= eps;
 
-        float incCost = calcStateCost(X_inc, X_next, controlNum);
-        float decCost = calcStateCost(X_dec, X_next, controlNum);
+        float incCost = calcStateCost(X_inc, controlNum);
+        float decCost = calcStateCost(X_dec, controlNum);
 
         l_x(i) = (incCost - decCost) / (2 * eps);
     }
@@ -491,7 +501,7 @@ m_state costFirstOrderDerivitives(const Ref<const m_state> X, m_state X_next, in
     return l_x;
 }
 
-float calcStateCost(const Ref<const m_state> X,const Ref<const m_state> X_next, int controlNum){
+float calcStateCost(const Ref<const m_state> X, int controlNum){
     float stateCost;
     m_state X_diff;
     m_dof accel;
@@ -503,7 +513,7 @@ float calcStateCost(const Ref<const m_state> X,const Ref<const m_state> X_next, 
     float power = controlNum / numControls;
     float scalar = pow(terminalScalarConstant, power);
 
-    temp = X_diff.transpose() * Q * X_diff;
+    temp = (X_diff.transpose() * Q * X_diff) + (q.transpose() * X_diff);
 
     stateCost = temp(0);
 
@@ -515,7 +525,7 @@ float calcControlCost(const Ref<const m_dof> U){
     float controlCost;
     VectorXd temp(1);
 
-    temp = 0.5 * U.transpose() * R * U;
+    temp = (U.transpose() * R * U) + (r.transpose() * U);
     controlCost = temp(0);
 
     return controlCost;
@@ -538,6 +548,14 @@ void initCostMatrices(){
         Q_term(i, i) *= 10;
     }
 
+    for(int i = 0; i < NUM_STATES; i++){
+        q(i) = stateCosts[i];
+    }
+
+    for(int i = 0; i < NUM_DOF; i++){
+        r(i) = controlCost[i];
+    }
+
 
     if(mujoco_steps_per_dt % linearising_num_sim_steps != 0){
         cout << "invalid choice for linearising sim steps" << endl;
@@ -546,7 +564,7 @@ void initCostMatrices(){
 }
 
 void initDesiredState(){
-    X_desired << 0, 3.14, 0, 0;
+    X_desired << 3.14, 0, 0, 0;
 
     // Currently its the last two entries in the desired state that matter, which is the x and y position of the cube
 

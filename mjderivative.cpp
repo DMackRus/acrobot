@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <iostream>
 
 #include "mujoco.h"
 
@@ -55,6 +56,7 @@ void worker(const mjModel* m, const mjData* dmain, mjData* d, int id, mjtNum* de
     mjMARKSTACK
     mjtNum* temp = mj_stackAlloc(d, nv);
     mjtNum* warmstart = mj_stackAlloc(d, nv);
+    //std::cout << "data in worker is: x0" << dmain->qpos[0] << " x1: " << dmain->qpos[1] << " x2: " << dmain->qvel[0] << " x3: " << dmain->qvel[1] << std::endl;
 
     // prepare static schedule: range of derivative columns to be computed by this thread
     int chunk = (m->nv + nthread-1) / nthread;

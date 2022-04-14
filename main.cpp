@@ -1,7 +1,5 @@
 #include "Utility/MujocoController/MujocoUI.h"
-#include "iLQR/iLQR.h"
-#include "iLQG.h"
-
+#include "iLQR/iLQR_dataCentric.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,26 +13,12 @@ extern MujocoController *globalMujocoController;
 extern mjModel* model;						// MuJoCo model
 extern mjData* mdata;						// MuJoCo data
 
-inline mjtNum stepCost(const mjData* d)
-{
-    mjtNum cost;
-    cost =
-            1.0  * d->qpos[0] * d->qpos[0] +
-            10.0 * d->qpos[1] * d->qpos[1] +
-            1.0  * d->qvel[0] * d->qvel[0] +
-            10.0 * d->qvel[1] * d->qvel[1] +
-            1.0  * d->ctrl[0] * d->ctrl[0];
-    return cost;
-}
-
 int main() {
     initMujoco();
-    initialseController();
+    //initialseController();
 
     //simpleTest();
     testILQR();
-
-
 
     render();
 

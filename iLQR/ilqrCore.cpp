@@ -21,10 +21,12 @@ extern float epsConverge;
 extern int numControls;
 extern int torqueLims[NUM_DOF];
 
-extern float angleLims[NUM_DOF];
-extern float velocityLims[NUM_DOF];
+extern m_dof_dof R;
+extern m_state_state Q;
+extern m_state q;
+extern m_dof r;
 
-float lamb = 10;
+float lamb = 0.1;
 int numIterations = 0;
 float oldCost;
 
@@ -51,7 +53,7 @@ void differentiateDynamics(m_state *X, m_dof *U, m_state_state *f_x, m_state_dof
         f_x[t] = A_dt;
         f_u[t] = B_dt;
 
-        l[t] = immediateCostAndDerivitives(l_x[t], l_xx[t], l_u[t], l_uu[t], X[t], X[t+1], U[t], t);
+        l[t] = immediateCostAndDerivitives(l_x[t], l_xx[t], l_u[t], l_uu[t], X[t], U[t], t);
 
         l[t]    *= dt;
         l_x[t]  *= dt;
@@ -59,9 +61,17 @@ void differentiateDynamics(m_state *X, m_dof *U, m_state_state *f_x, m_state_dof
         l_u[t]  *= dt;
         l_uu[t] *= dt;
 
+//        cout << "------------------- iteration: " << t << " --------------------" << endl;
+//        cout << "l_xx[t]: " << l_xx[t] << endl;
+//        cout << "l_x[t]: " << l_x[t] << endl;
+
+        m_state _;
+        stepSimulation(X[t], U[t], X[t+1], _, mujoco_steps_per_dt);
+
 //        cout << "iteration " << t << endl;
 //        cout << " f_x " << f_x[t] << endl;
 //        cout << " f_u " << f_u[t] << endl;
+//        int a = 1;
 //
 //        cout << "cost " << l[t] << endl;
 //        cout << "cost dif x" << l_x[t] << endl;
@@ -76,14 +86,11 @@ void differentiateDynamics(m_state *X, m_dof *U, m_state_state *f_x, m_state_dof
 //    l_xx[numControls] *= dt;
 }
 
-bool backwardsPass(m_state_state *f_x, m_state_dof *f_u, float l, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
-    float V = l;
+bool backwardsPass(m_state_state *A, m_state_dof *B, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
     m_state V_x;
-    V_x = l_x[numControls];;
+    V_x = l_x[numControls - 1];
     m_state_state V_xx;
-    V_xx = l_xx[numControls];
-    m_dof_state f_u_t;
-    m_state_state f_x_t;
+    V_xx = l_xx[numControls - 1];
     bool validBackwardsPass = true;
 
     for(int t = numControls - 1; t > -1; t--){
@@ -92,55 +99,89 @@ bool backwardsPass(m_state_state *f_x, m_state_dof *f_u, float l, m_state *l_x, 
         m_state_state Q_xx;
         m_dof_dof Q_uu;
         m_dof_state Q_ux;
+        m_state_state V_xx_reg;
 
-        f_u_t = f_u[t].transpose();
-        f_x_t = f_x[t].transpose();
-        Q_x = l_x[t] + (f_x_t * V_x);
-        Q_u = l_u[t] + (f_u_t * V_x);
+//        cout << "V_x " << V_x << endl;
+//        cout << "V_xx " << V_xx << endl;
 
-        Q_xx = l_xx[t] + (f_x_t * (V_xx * f_x[t]));
-        Q_ux = (f_u_t * (V_xx * f_x[t]));
-        Q_uu = l_uu[t] + (f_u_t * (V_xx * f_u[t]));
+        V_xx_reg = V_xx.replicate(1, 1);
+//        for(int i = 0; i < NUM_STATES; i++){
+//            V_xx_reg(i, i) += lamb;
+//        }
 
-        // Caluclate Q_uu_inverse via eigen vector regularisation
-        SelfAdjointEigenSolver<m_dof_dof> eigensolver(Q_uu);
 
-        m_dof eigVals = eigensolver.eigenvalues();
-        m_dof_dof eigVecs = eigensolver.eigenvectors();
+        Q_x = l_x[t] + (A[t].transpose() * V_x);
 
+        Q_u = l_u[t] + (B[t].transpose() * V_x);
+
+        Q_xx = l_xx[t] + (A[t].transpose() * (V_xx * A[t]));
+
+        Q_uu = l_uu[t] + (B[t].transpose() * (V_xx * B[t]));
+
+        Q_ux = (B[t].transpose() * (V_xx * A[t]));
+
+
+//        cout << "A " << A[t] << endl;
+//        cout << "B  " << B[t] << endl;
+//
+//        cout << "Q_x " << Q_x << endl;
+//        cout << "Q_u " << Q_u << endl;
+//
+//        cout << "Q_xx " << Q_xx << endl;
+//        cout << "Q_uu " << Q_uu << endl;
+//        cout << "Q_ux " << Q_ux << endl;
+
+        m_dof_dof Q_uu_reg = Q_uu.replicate(1, 1);
         for(int i = 0; i < NUM_DOF; i++){
-            if(eigVals(i) < 0) eigVals(i) = 0.0f;
-            eigVals(i) += lamb;
-            eigVals(i) = 1 / eigVals(i);
+            Q_uu_reg(i, i) += lamb;
         }
 
-        m_dof_dof diagMat;
+        auto temp = (Q_uu_reg).ldlt();
+        m_dof_dof I;
+        I.setIdentity();
+        m_dof_dof Q_uu_inv = temp.solve(I);
 
-        diagMat = eigVals.asDiagonal();
 
-        m_dof_dof Q_uu_inv;
-        Q_uu_inv = eigVecs * diagMat * eigVecs.transpose();
+        //cout << "Q_uu_inv " << Q_uu_inv << endl;
+        int a = 1;
+
+        // Caluclate Q_uu_inverse via eigen vector regularisation
+//        SelfAdjointEigenSolver<m_dof_dof> eigensolver(Q_uu);
+//
+//        m_dof eigVals = eigensolver.eigenvalues();
+//        m_dof_dof eigVecs = eigensolver.eigenvectors();
+//
+//        for(int i = 0; i < NUM_DOF; i++){
+//            if(eigVals(i) < 0) eigVals(i) = 0.0f;
+//            eigVals(i) += lamb;
+//            eigVals(i) = 1 / eigVals(i);
+//        }
+//
+//        m_dof_dof diagMat;
+//
+//        diagMat = eigVals.asDiagonal();
+//
+//        m_dof_dof Q_uu_inv;
+//        Q_uu_inv = eigVecs * diagMat * eigVecs.transpose();
 
 
         k[t] = -Q_uu_inv * Q_u;
-        if(isnan(k[t](0))){
-
-            for(int f = 0; f < 100; f++){
-//                cout << "---------------------------------------" << endl;
-//                cout << "control number  " << t << endl;
-//                cout << "k[t] " << k[t - 100 + f] << endl;
-//                cout << "K[t]" << K[t - 100 + f] << endl;
-//                cout << "Q_ux" << Q_ux<< endl;
-//                cout << "V_xx" << V_xx<< endl;
-//                cout << "f_u_t" << f_u_t<< endl;
-//                cout << "f_x" << f_x[t]<< endl;
-            }
-
-
-            validBackwardsPass = false;
-            break;
-        }
         K[t] = -Q_uu_inv * Q_ux;
+//        cout << "k[t] " << k[t] << endl;
+//        cout << "K[t] " << K[t] << endl;
+
+        V_x = Q_x + (K[t].transpose() * (Q_uu * k[t])) + (K[t].transpose() * Q_u) + (Q_ux.transpose() * k[t]);
+
+        V_xx = Q_xx + (K[t].transpose() * (Q_uu * K[t])) + (K[t].transpose() * Q_ux) + (Q_ux.transpose() * K[t]);
+
+
+        //V_x = Q_x - (Q_u * Q_uu_inv * Q_ux).transpose();
+        //cout << "V_x " << V_x << endl;
+        //V_xx = Q_xx + (Q_ux.transpose() * Q_uu_inv * Q_ux);
+        //cout << "V_xx " << V_xx << endl;
+        int df = 1;
+
+
 
         if(t > numControls){
             cout << "---------------------------------------" << endl;
@@ -151,63 +192,147 @@ bool backwardsPass(m_state_state *f_x, m_state_dof *f_u, float l, m_state *l_x, 
             cout << "l_xx[t] " << endl  << l_xx[t] << endl;
             cout << "Q_ux" << Q_ux<< endl;
             cout << "V_xx" << V_xx<< endl;
-            cout << "f_u_t" << f_u_t<< endl;
-            cout << "f_x" << f_x[t]<< endl;
-
-        }
-
-        if(t % 100 == 0){
+            cout << "B" << B<< endl;
+            cout << "A" << A[t]<< endl;
             int a = 1;
+
         }
-
-        V_x = Q_x - (K[t].transpose() * (Q_uu * k[t]));
-        V_xx = Q_xx - (K[t].transpose() * (Q_uu * K[t]));
-
     }
 
     return validBackwardsPass;
 }
 
-bool backwardsPassTest(m_state_state *f_x, m_state_dof *f_u, float l, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K, m_state *X){
+bool backwardsPassTest(m_state_state *A, m_state_dof *B, float l, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K, m_state *X){
     float V = l;
     m_state V_x;
     V_x = l_x[numControls];;
     m_state_state V_xx;
     V_xx = l_xx[numControls];
-    m_dof_state f_u_t;
-    m_state_state f_x_t;
     bool validBackwardsPass = true;
 
     for(int t = numControls - 1; t >= 1; t--){
 
-        //V_xx = (V_xx + V_xx.transpose()) / 2;
+        V_xx = (V_xx + V_xx.transpose()) / 2;
 
-        m_state c = X[t] - X[t-1];
-        V_xx.diagonal().array() + lamb;
-        auto temp = (-2*f_u[t].transpose()*(V_xx)*f_u[t] - (2*l_uu[t])).ldlt();
+        m_state c = X[t] - X[t + 1];
+        V_xx.diagonal().array() += lamb;
+//        if(t > numControls - 5){
+//            cout << "V_xx" << V_xx << endl;
+//        }
+        auto temp = (-2*B[t].transpose()*(V_xx)*B[t] - (2*R)).ldlt();
 
-        K[t].noalias() = temp.solve(2*f_u[t].transpose()*(V_xx)*f_x[t]);
+        K[t].noalias() = temp.solve(2*B[t].transpose()*(V_xx)*A[t]);
 
-        cout << f_u[t] << endl;
-        cout << f_x[t] << endl;
+        m_dof temp1_k = B[t].transpose() * V_x;
+        m_dof temp2_k = 2 * B[t].transpose() * V_xx * c;
+        k[t].noalias() = temp.solve(temp1_k + temp2_k + r.transpose());
 
-        k[t].noalias() = temp.solve(f_u[t].transpose()*(V_x)+(2*f_u[t].transpose()*(V_xx)*c)+l_u[t].transpose());
+//        cout << "before" << endl;
+//        cout << V_x << endl;
+        //
+        m_state temp1_1 = ((k[t].transpose()*B[t].transpose()) + c.transpose());
 
-        V_xx = (f_x[t]+f_u[t]*K[t]).transpose()*(V_xx)*(f_x[t]+f_u[t]*K[t])+l_xx[t]+K[t].transpose()*l_uu[t]*K[t];
+        m_state temp1 = 2*temp1_1.transpose()*V_xx*(A[t]+(B[t]*K[t]));
+        m_state temp2 = (V_x.transpose())*(A[t]+(B[t]*K[t]));
+        m_state temp3 = temp2 + q;
+        m_state temp4 = (2*k[t].transpose()*R*K[t]);
+//        cout << "temp1" << endl;
+//        cout << temp1 << endl;
+//        cout << "temp2" << endl;
+//        cout << temp2 << endl;
+//        cout << "temp3" << endl;
+//        cout << temp3 << endl;
+//        cout << "temp4" << endl;
+//        cout << temp4 << endl;
+        V_x = temp1 + temp3 + temp4;
+//        cout << "New V_x" << endl;
+//        cout << V_x << endl;
 
-        m_state temp1 = 2*(k[t].transpose()*f_u[t].transpose()+c.transpose())*(V_xx)*(f_x[t]+f_u[t]*K[t]);
-        m_state temp4 = (V_x.transpose())*(f_x[t]+f_u[t]*K[t]).transpose();
-        m_state temp2 = temp4 + l_x[t];
-        m_state temp3 = 2*k[t].transpose()*l_uu[t]*K[t];
-        V_x = temp1 + temp2 + temp3;
+        //vn=2(kTnBT+cT)Vn−1(A+BKn)+vn−1(A+BKn)+q+2kTnRKn
 
-        cout << "k[t] " << endl << k[t] << endl;
-        cout << "K[t]" << endl << K[t] << endl;
+        V_xx = (A[t]+B[t]*K[t]).transpose()*(V_xx)*(A[t]+B[t]*K[t])+Q+K[t].transpose()*R*K[t];
+
+//        cout << "k[t] " << endl << k[t] << endl;
+//        cout << "K[t]" << endl << K[t] << endl;
+//        cout << "V_xx " << endl << V_xx << endl;
+//        cout << "V_x" << endl << V_x << endl;
         int a = 1;
     }
 
 
     return true;
+}
+
+float forwardsPassTest(m_state *X, m_state *X_best, m_dof *U, m_dof *U_best, m_dof *k, m_dof_state *K){
+    m_dof *U_new = new m_dof[numControls];
+    m_state *X_new = new m_state[numControls + 1];
+    float alpha = 1;
+    float bestAlpha = alpha;
+    float newCost = 0;
+    float bestCost = 1000;
+    int numAlphaChecks = 1;
+
+    for(int i = 0; i < numAlphaChecks; i++){
+        X_new[0] = X[0];
+        newCost = 0;
+        globalMujocoController->loadSimulationState(initStateIndex);
+        m_state systemState = globalMujocoController->returnSystemState();
+        cout << "system init state" << endl << systemState << endl;
+
+        for(int t = 0; t < numControls; t++){
+            m_state stateFeedback;
+            stateFeedback = X_new[t] - X[t];
+            m_dof feedBackGain = K[t] * stateFeedback;
+            m_dof linearFeedback = (alpha * k[t]);
+
+            // calculate new optimal control for this timestep
+            U_new[t] = U[t] + (alpha * k[t]) + feedBackGain;
+
+            cout << "old state was: " << endl << X[t] << endl;
+            cout << "new state is: " << endl << X_new[t] << endl;
+
+            cout << "feedback : " << endl << stateFeedback << endl;
+            cout << "feedback gain: " << endl << feedBackGain << endl;
+//
+            cout << "old U was: " << endl << U[t] << endl;
+            cout << "new U is: " << endl << U_new[t] << endl;
+
+            // constrain new torque within limits
+            for(int k = 0; k < NUM_DOF; k++){
+                if(U_new[t](k) > torqueLims[k]) U_new[t](k) = torqueLims[k];
+                if(U_new[t](k) < -torqueLims[k]) U_new[t](k) = -torqueLims[k];
+            }
+
+            // step simulation wit new control and repeat
+            m_state _;
+            stepSimulation(X_new[t], U_new[t], X_new[t+1], _, mujoco_steps_per_dt);
+
+            // calc current state cost and keep running tally
+            float currentCost = immediateCost(X_new[t], U_new[t], t);
+            newCost += (currentCost * dt);
+
+        }
+
+        if(newCost < bestCost){
+            bestCost = newCost;
+            for(int j = 0; j < numControls; j++){
+                X_best[j + 1] = X_new[j + 1];
+                U_best[j] = U_new[j];
+            }
+            bestAlpha = alpha;
+        }
+        alpha += 0.01;
+    }
+
+    cout << "terminal state best: " << endl << X_best[numControls] << endl;
+//    for(int t = 0; t < numControls; t++){
+//        cout << "control " << t << " : " << U_best[t] << endl;
+//    }
+    cout << "best alpha was " << bestAlpha << endl;
+    cout << "best cost was " << bestCost << endl;
+
+
+    return bestCost;
 }
 
 float forwardsPass(m_state *X, m_state *X_new, m_dof *U, m_dof *U_new, m_dof *k, m_dof_state *K){
@@ -233,13 +358,13 @@ float forwardsPass(m_state *X, m_state *X_new, m_dof *U, m_dof *U_new, m_dof *k,
         for(int t = 0; t < numControls; t++){
             m_state stateFeedback;
             stateFeedback = xnew - X[t];
-            //stateFeedback = xnew;
             m_dof feedBackGain = K[t] * stateFeedback;
             m_dof linearFeedback = (alpha * k[t]);
 
             U_new[t] = U[t] + (alpha * k[t]) + feedBackGain;
+            //U_new[t] = (alpha * k[t]) + feedBackGain;
 
-            if(t < 5){
+            if(t < numControls){
 //                cout << "---------------------------------------" << endl;
 //                cout << "x new " << xnew(0) << endl;
 //                cout << "stateFeedback" << stateFeedback(0) << endl;
@@ -250,6 +375,7 @@ float forwardsPass(m_state *X, m_state *X_new, m_dof *U, m_dof *U_new, m_dof *k,
 //                cout << "new control" << U_new[t](0) << endl;
 //                cout << "little k " << endl << k[t] << endl;
 //                cout << "Big k " << endl << K[t] << endl;
+//                int a = 1;
             }
 
 
@@ -263,6 +389,7 @@ float forwardsPass(m_state *X, m_state *X_new, m_dof *U, m_dof *U_new, m_dof *k,
             stepSimulation(_x, U_new[t], xnew, _, mujoco_steps_per_dt);
         }
 
+        cout << "new control index 1: " << U_new[1] << endl;
         newAlphaCost = rollOutTrajectory(X[0], X_new, U_new, numControls);
 
 

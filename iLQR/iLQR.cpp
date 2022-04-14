@@ -71,8 +71,10 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
 
     globalMujocoController->saveMujocoState();
 
-    //Perform a forward pass with initialised controls -FILL
+    //Perform a forward pass with initialised controls - FILL
     oldCost = rollOutTrajectory(X0, X, U, numControls);
+    cout << "INITIAL COST FROM WARM START TRAJECTORY IS: " << oldCost << endl;
+    cout << "X 1 is: " << endl << X[1] << endl;
 
     // iterate until optimisation finished
     while(!optimisationFinished){
@@ -84,6 +86,7 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
         controlState = 1000;
         differentiateDynamics(X, U, f_x, f_u, l, l_x, l_xx, l_u, l_uu);
         controlState = ilqrSim;
+        cout << "X 1 is: " << endl << X[1] << endl;
 
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
@@ -93,12 +96,16 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
         while(!costImprovementMade){
 
             // STEP 2 - Backwards pass to compute optimal linear and feedback gain matrices k and K
-            if(!backwardsPassTest(f_x, f_u, l[numControls - 1], l_x, l_xx, l_u, l_uu, k, K, X)){
+            if(!backwardsPass(f_x, f_u, l_x, l_xx, l_u, l_uu, k, K)){
                 increaseLamda();
             }
             else{
+//                for(int i = 0; i < numControls; i++){
+//                    cout << "control " << i << " K[i] " << K[i] << endl;
+//                }
+
                 // STEP 3 - Forwards pass to calculate new optimal controls - with optional alpha binary search
-                newCost = forwardsPass(X, X_new, U, U_new, k, K);
+                newCost = forwardsPassTest(X, X_new, U, U_new, k, K);
 
                 // STEP 4 - Check for convergence
                 optimisationFinished = checkForConvergence(newCost, X, X_new, U, U_new, &costImprovementMade);
@@ -114,7 +121,7 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
 void simpleTest(){
     controlState = ilqrSim;
     m_state X0;
-    X0 << 3.14, 0, 0, 0;
+    X0 << 1.55, 0, 0, 0;
 
     globalMujocoController->setSystemState(X0);
     globalMujocoController->saveMujocoState();
@@ -136,7 +143,7 @@ void simpleTest(){
 void testILQR(){
     controlState = ilqrSim;
     m_state X0;
-    X0 << 3.14, 0, 0, 0;
+    X0 << 1.55, 0, 0, 0;
 
     initCostMatrices();
     initDesiredState();
@@ -189,8 +196,6 @@ void testILQR(){
             //globalMujocoController->setSystemState(X_dyn[i]);
             MatrixXd A = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
             MatrixXd B = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
-            //globalMujocoController->deleteLastMujocoState();
-            //globalMujocoController->saveMujocoState();
 
             lineariseDynamicsParallel(X_dyn[i], initControls[i], A, B);
 
@@ -436,6 +441,8 @@ void myController(const mjModel *m, mjData *d){
             d->ctrl[i] = nextControl(i);
             //d->qfrc_applied[i] = nextControl(i);
         }
+
+        //cout << "pos 0: " << d->qpos[0] << " pos 1: " << d->qpos[1] << endl;
     }
     else if(controlState == simulating){
         nextControl = controlSequence[controlCounter];
@@ -444,6 +451,8 @@ void myController(const mjModel *m, mjData *d){
             d->ctrl[i] = controlSequence[controlCounter](i);
             //d->qfrc_applied[i] = controlSequence[controlCounter](i);
         }
+
+        //cout << "current joint 0: " << d->qpos[0] << endl;
 
         mujocoTimeStepCounter++;
         if(mujocoTimeStepCounter >= mujocoTimesStepsPerControl){
@@ -491,7 +500,7 @@ void warmStartControls(m_dof *U, Ref<m_state> X0){
 
     for(int i = 0; i < numControls; i++){
         m_dof nextControl;
-        nextControl << 0.3;
+        nextControl << 0;
         U[i] = nextControl;
     }
 }

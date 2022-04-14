@@ -114,22 +114,8 @@ build CMakeFiles/Mujoco_Acrobot_Control.dir/util.cpp.o: CXX_COMPILER__Mujoco_Acr
   OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
   OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
 
-build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_funcs.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/iLQR/iLQR_funcs.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
-  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_funcs.cpp.o.d
-  FLAGS = -g -O0 -std=gnu++14
-  INCLUDES = -I/home/david/projects/Mujoco_Acrobot_Control/mujoco/include -I//include/eigen3 -isystem /home/david/Libraries/eigen-3.4.0
-  OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
-  OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR
-
-build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/ilqrCore.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/iLQR/ilqrCore.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
-  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/ilqrCore.cpp.o.d
-  FLAGS = -g -O0 -std=gnu++14
-  INCLUDES = -I/home/david/projects/Mujoco_Acrobot_Control/mujoco/include -I//include/eigen3 -isystem /home/david/Libraries/eigen-3.4.0
-  OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
-  OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR
-
-build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/iLQR/iLQR.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
-  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR.cpp.o.d
+build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/iLQR/iLQR_dataCentric.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
+  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o.d
   FLAGS = -g -O0 -std=gnu++14
   INCLUDES = -I/home/david/projects/Mujoco_Acrobot_Control/mujoco/include -I//include/eigen3 -isystem /home/david/Libraries/eigen-3.4.0
   OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
@@ -143,7 +129,7 @@ build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR.cpp.o: CXX_COMPILER__Mujoc
 #############################################
 # Link the executable ../Mujoco_Acrobot_Control
 
-build ../Mujoco_Acrobot_Control: CXX_EXECUTABLE_LINKER__Mujoco_Acrobot_Control_Debug CMakeFiles/Mujoco_Acrobot_Control.dir/main.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoUI.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoController.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/mjderivative.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/update.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/util.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_funcs.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/ilqrCore.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR.cpp.o | ../mujoco/include/libmujoco210.so ../mujoco/include/libglfw.so.3
+build ../Mujoco_Acrobot_Control: CXX_EXECUTABLE_LINKER__Mujoco_Acrobot_Control_Debug CMakeFiles/Mujoco_Acrobot_Control.dir/main.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoUI.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoController.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/mjderivative.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/update.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/util.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o | ../mujoco/include/libmujoco210.so ../mujoco/include/libglfw.so.3
   FLAGS = -g -O0
   LINK_LIBRARIES = -Wl,-rpath,/home/david/projects/Mujoco_Acrobot_Control/mujoco/include  -lmujoco210  ../mujoco/include/libglfw.so.3  -lGL  -lglew  -lGL
   LINK_PATH = -L/home/david/projects/Mujoco_Acrobot_Control/mujoco/include

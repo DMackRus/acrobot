@@ -2,6 +2,7 @@
 // Created by davem on 20/01/2022.
 //
 #include "MujocoUI.h"
+#include "../../iLQR/iLQR_dataCentric.h"
 
 extern mjModel *model;                  // MuJoCo model
 extern mjData *mdata;                   // MuJoCo data
@@ -17,6 +18,8 @@ bool button_middle = false;
 bool button_right = false;
 double lastx = 0;
 double lasty = 0;
+
+extern mjData* d_init;
 
 
 // keyboard callback
@@ -140,6 +143,10 @@ void setupMujocoWorld(){
 
 void render(){
     // run main loop, target real-time simulation and 60 fps rendering
+    int controlNum = 0;
+    m_dof nextControl;
+    bool showFinalControls = true;
+    cpMjData(model, mdata, d_init);
     while (!glfwWindowShouldClose(window))
     {
         // advance interactive simulation for 1/60 sec
@@ -148,16 +155,21 @@ void render(){
         //  Otherwise add a cpu timer and exit this loop when it is time to render.
         mjtNum simstart = mdata->time;
         while (mdata->time - simstart < 1.0 / 60.0){
-            mj_step(model, mdata);
-            if(globalMujocoController->resetSimFlag == true){
-                globalMujocoController->resetSimFlag = false;
-                globalMujocoController->loadSimulationState(0);
-                simstart = mdata->time;
+            nextControl = returnNextControl(controlNum, showFinalControls);
+            for(int k = 0; k < NUM_DOF; k++){
+                mdata->ctrl[k] = nextControl(k);
             }
+
+            mj_step(model, mdata);
+            controlNum++;
+            if(controlNum >= NUM_CONTROLS){
+                controlNum = 0;
+                cpMjData(model, mdata, d_init);
+                simstart = mdata->time;
+                showFinalControls = 1 - showFinalControls;
+            }
+
         }
-
-
-
 
         // get framebuffer viewport
         mjrRect viewport = { 0, 0, 0, 0 };
@@ -172,9 +184,6 @@ void render(){
 
         // process pending GUI events, call GLFW callbacks
         glfwPollEvents();
-
-
-
     }
 
 }

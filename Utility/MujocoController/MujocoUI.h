@@ -14,6 +14,7 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods);
 
 void setupMujocoWorld();
 void render();
+void render_simpleTest();
 void initMujoco();
 void updateScreen();
 

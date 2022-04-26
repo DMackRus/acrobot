@@ -144,8 +144,8 @@ void setupMujocoWorld(){
 void render(){
     // run main loop, target real-time simulation and 60 fps rendering
     int controlNum = 0;
-    m_dof nextControl;
     bool showFinalControls = true;
+    m_dof nextControl;
     cpMjData(model, mdata, d_init);
     while (!glfwWindowShouldClose(window))
     {
@@ -160,14 +160,49 @@ void render(){
                 mdata->ctrl[k] = nextControl(k);
             }
 
-            mj_step(model, mdata);
+            for(int i = 0; i < NUM_MJSTEPS_PER_CONTROL; i++){
+                mj_step(model, mdata);
+            }
+
             controlNum++;
-            if(controlNum >= NUM_CONTROLS){
+
+            if(controlNum >= ILQR_HORIZON_LENGTH){
                 controlNum = 0;
                 cpMjData(model, mdata, d_init);
                 simstart = mdata->time;
                 showFinalControls = 1 - showFinalControls;
             }
+        }
+
+        // get framebuffer viewport
+        mjrRect viewport = { 0, 0, 0, 0 };
+        glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+
+        // update scene and render
+        mjv_updateScene(model, mdata, &opt, NULL, &cam, mjCAT_ALL, &scn);
+        mjr_render(viewport, &scn, &con);
+
+        // swap OpenGL buffers (blocking call due to v-sync)
+        glfwSwapBuffers(window);
+
+        // process pending GUI events, call GLFW callbacks
+        glfwPollEvents();
+    }
+
+}
+
+void render_simpleTest(){
+    // run main loop, target real-time simulation and 60 fps rendering
+
+    while (!glfwWindowShouldClose(window))
+    {
+        // advance interactive simulation for 1/60 sec
+        //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
+        //  this loop will finish on time for the next frame to be rendered at 60 fps.
+        //  Otherwise add a cpu timer and exit this loop when it is time to render.
+        mjtNum simstart = mdata->time;
+        while (mdata->time - simstart < 1.0 / 60.0){
+            mj_step(model, mdata);
 
         }
 

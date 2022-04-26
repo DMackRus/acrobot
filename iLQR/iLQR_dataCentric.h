@@ -10,7 +10,11 @@
 #include "iLQR_funcs.h"
 #include "../util.h"
 
-#define NUM_CONTROLS 2500
+#define MUJOCO_DT 0.002
+#define ILQR_DT 0.002
+#define NUM_MJSTEPS_PER_CONTROL 1
+#define MUJOCO_HORIZON_LENGTH 2500
+#define ILQR_HORIZON_LENGTH 2500
 #define TEST_LINEARISATION 0
 
 void iLQR(m_state X0, m_dof *U, m_state *X);
@@ -41,5 +45,6 @@ void testILQR();
 void simpleTest();
 
 void saveStates(m_state *X_dyn, m_state *X_lin);
+void saveTrajecToCSV(m_dof *U, m_state *X);
 
 #endif //MUJOCO_ACROBOT_CONTROL_ILQR_DATACENTRIC_H

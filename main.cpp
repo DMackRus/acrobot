@@ -8,6 +8,8 @@
 #include <Eigen/Core>
 #include "mujoco.h"
 
+#define ILQR 1
+
 
 extern MujocoController *globalMujocoController;
 extern mjModel* model;						// MuJoCo model
@@ -17,10 +19,15 @@ int main() {
     initMujoco();
     //initialseController();
 
-    //simpleTest();
-    testILQR();
 
-    render();
+    if(ILQR){
+        testILQR();
+        render();
+    }
+    else{
+        simpleTest();
+        render_simpleTest();
+    }
 
     return 0;
 }

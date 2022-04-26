@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#define NUM_DOF 1
+#define NUM_DOF 2
 #define NUM_STATES 4
 #define NUM_JOINTS 0
 // Theta 1 - 7, theta dot 1 - 7, x, z of cube

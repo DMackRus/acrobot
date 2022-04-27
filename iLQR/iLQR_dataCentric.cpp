@@ -21,7 +21,7 @@ float epsConverge = 0.005;
 
 //float controlCost[DOF] = {0.0001, 0.0001, 0.0001, 0.0001, 0.00005, 0.00005, 0.00005};
 float controlCost[NUM_DOF] = {0.01, 0.01};
-float stateCosts[NUM_STATES] = {10, 1, 0.1, 0.1};
+float stateCosts[NUM_STATES] = {10, 10, 0.01, 0.01};
 float terminalScalarConstant = 4;
 int torqueLims[NUM_DOF] = {100};
 
@@ -143,6 +143,7 @@ void simpleTest(){
 void testILQR(){
     m_state X0;
     X0 << 1.5, 0, 0, 0;
+
 
     auto iLQRStart = high_resolution_clock::now();
 
@@ -368,20 +369,35 @@ void differentiateDynamics(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m
     MatrixXd A = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
     MatrixXd B = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
 
+    MatrixXd A_test = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
+    MatrixXd B_test = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
+
+    MatrixXd A_dt = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
+    MatrixXd B_dt = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
+
     // Linearise the dynamics along the trajectory
     cout << "------------------------ LINEARISE DYNAMICS -----------------------------" << endl;
 
+    int save_iterations = model->opt.iterations;
+    mjtNum save_tolerance = model->opt.tolerance;
+
+    model->opt.iterations = 30;
+    model->opt.tolerance = 0;
+
     for(int t = 0; t < ILQR_HORIZON_LENGTH; t++){
         // Calculate linearised dynamics for current time step via finite differencing
-        lineariseDynamicsSerial(A, B, t);
+        //lineariseDynamicsSerial_trial(A_test, B_test, t);
+        lineariseDynamicsSerial_trial(A, B, t, MUJOCO_DT);
 
-//        m_state_state A_dt;
-//        m_state_dof B_dt;
-//        int scaling = mujoco_steps_per_dt / linearising_num_sim_steps;
-//        scaleLinearisation(A, B, A_dt, B_dt,  scaling);
+//        cout << "A truth is: " << endl << A << endl;
+//        cout << "A trial is: " << endl << A_test << endl;
+//        cout << "B truth is: " << endl << B << endl;
+//        cout << "B trial is: " << endl << B_test << endl;
 
-        f_x[t] = A;
-        f_u[t] = B;
+        scaleLinearisation(A_dt, B_dt, A, B, NUM_MJSTEPS_PER_CONTROL);
+
+        f_x[t] = A_dt;
+        f_u[t] = B_dt;
 
         calcCostDerivatives(l_x[t], l_xx[t], l_u[t], l_uu[t], t);
 
@@ -392,11 +408,33 @@ void differentiateDynamics(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m
 
     }
 
+    model->opt.iterations = save_iterations;
+    model->opt.tolerance = save_tolerance;
+
     calcCostDerivatives(l_x[ILQR_HORIZON_LENGTH], l_xx[ILQR_HORIZON_LENGTH], l_u[ILQR_HORIZON_LENGTH-1], l_uu[ILQR_HORIZON_LENGTH-1], ILQR_HORIZON_LENGTH);
     l_x [ILQR_HORIZON_LENGTH] *= ILQR_DT;
     l_xx[ILQR_HORIZON_LENGTH] *= ILQR_DT;
 
     cout << "---------------------- END LINEARISE DYNAMICS -----------------------------" << endl;
+}
+
+void scaleLinearisation(Ref<m_state_state> A_scaled, Ref<m_state_dof> B_scaled, Ref<m_state_state> A, Ref<m_state_dof> B, int num_steps_per_dt){
+
+    // TODO look into ways of speeding up matrix to the power of calculation
+    A_scaled = A.replicate(1, 1);
+    B_scaled = B.replicate(1, 1);
+    m_state_dof currentBTerm;
+
+    for(int i = 0; i < num_steps_per_dt - 1; i++){
+        A_scaled *= A;
+    }
+
+    currentBTerm = B.replicate(1, 1);
+    B_scaled += currentBTerm;
+    for(int i = 0; i < num_steps_per_dt - 1; i++){
+        currentBTerm = A * currentBTerm;
+        B_scaled += currentBTerm;
+    }
 }
 
 bool backwardsPass_Quu_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
@@ -859,6 +897,161 @@ void lineariseDynamicsSerial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum)
 
     //cout << "A matrix is: " << _A << endl;
     //cout << " B Mtrix is: " << _B << endl;
+
+}
+
+void lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum, float ilqr_dt){
+
+    // Initialise variables
+    int nv = model->nv;
+    int nu = model->nu;
+    static int nwarmup = 3;
+    float eps = 1e-5;
+
+    _A.block(0, 0, nv, nv).setIdentity();
+    _A.block(0, nv, nv, nv).setIdentity();
+    _A.block(0, nv, nv, nv) *= model->opt.timestep;
+    _B.setZero();
+
+    // Initialise matrices for forwards dynamics
+    m_dof_dof dqaccdq;
+    m_dof_dof dqaccdqvel;
+    m_dof_dof dqaccdctrl;
+
+    // Create a copy of the current data that we want to differentiate around
+    mjData *saveData;
+    saveData = mj_makeData(model);
+    cpMjData(model, saveData, dArray[controlNum]);
+
+    // Allocate memory for variables
+    mjtNum* temp = mj_stackAlloc(saveData, nv);
+    mjtNum* warmstart = mj_stackAlloc(saveData, nv);
+
+    // Compute mj_forward once with no skips
+    mj_forward(model, saveData);
+
+    // Compute mj_forward a few times to allow optimiser to get a more accurate value for qacc
+    // skips position and velocity stages (TODO LOOK INTO IF THIS IS NEEDED FOR MY METHOD)
+    for( int rep=1; rep<nwarmup; rep++ )
+        mj_forwardSkip(model, saveData, mjSTAGE_VEL, 1);
+
+    mjtNum* output = saveData->qacc;
+
+    // save output for center point and warmstart (needed in forward only)
+    mju_copy(warmstart, saveData->qacc_warmstart, nv);
+
+    // CALCULATE dqaccdctrl
+    for(int i = 0; i < NUM_DOF; i++){
+        saveData->ctrl[i] = dArray[controlNum]->ctrl[i] + eps;
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_forwardSkip(model, saveData, mjSTAGE_VEL, 1);
+
+        // copy and store +perturbation
+        mju_copy(temp, output, nv);
+
+        // perturb selected target -
+        cpMjData(model, saveData, dArray[controlNum]);
+        saveData->ctrl[i] = dArray[controlNum]->ctrl[i] - eps;
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_forwardSkip(model, saveData, mjSTAGE_VEL, 1);
+
+        for( int j=0; j<nv; j++ ){
+            dqaccdctrl(j, i) = (temp[j] - output[j])/(2*eps);
+        }
+
+        // undo pertubation
+        cpMjData(model, saveData, dArray[controlNum]);
+
+    }
+
+    // CALCULATE dqaccdvel
+    for(int i = 0; i < NUM_DOF; i++){
+        // perturb velocity +
+        saveData->qvel[i] = dArray[controlNum]->qvel[i] + eps;
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_forwardSkip(model, saveData, mjSTAGE_POS, 1);
+
+        // copy and store +perturbation
+        mju_copy(temp, output, nv);
+
+        // perturb velocity -
+        saveData->qvel[i] = dArray[controlNum]->qvel[i] - eps;
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_forwardSkip(model, saveData, mjSTAGE_POS, 1);
+
+        // compute column i of derivative 1
+        for( int j=0; j<nv; j++ ){
+            dqaccdqvel(j, i) = (temp[j] - output[j])/(2*eps);
+        }
+
+        // undo perturbation
+        cpMjData(model, saveData, dArray[controlNum]);
+    }
+
+    // CALCULATE dqaccdcqpos
+    for(int i = 0; i < NUM_DOF; i++){
+        // perturb position +
+        saveData->qpos[i] = dArray[controlNum]->qpos[i] + eps;
+//        cout << "qacc Number 1: ";
+//        for(int j = 0; j < NUM_DOF; j++){
+//            cout << saveData->qacc[j] << " ";
+//        }
+//        cout << endl;
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_forwardSkip(model, saveData, mjSTAGE_NONE, 1);
+
+        // copy and store +perturbation
+        mju_copy(temp, output, nv);
+//        cout << "qacc Number 1: ";
+//        for(int j = 0; j < NUM_DOF; j++){
+//            cout << saveData->qacc[j] << " ";
+//        }
+//        cout << endl;
+
+        // perturb position -
+        saveData->qpos[i] = dArray[controlNum]->qpos[i] - eps;
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_forwardSkip(model, saveData, mjSTAGE_NONE, 1);
+//        cout << "qacc Number 1: ";
+//        for(int j = 0; j < NUM_DOF; j++){
+//            cout << saveData->qacc[j] << " ";
+//        }
+//        cout << endl;
+
+        // compute column i of derivative 1
+        for( int j=0; j<nv; j++ ){
+            dqaccdq(j, i) = (temp[j] - output[j])/(2*eps);
+        }
+
+        // undo perturbation
+        cpMjData(model, saveData, dArray[controlNum]);
+    }
+
+    mj_deleteData(saveData);
+
+//    cout << " dqaccdqis: " << dqaccdq << endl;
+//    cout << " dqaccdqvel: " << dqaccdqvel << endl;
+//    cout << " dqaccdctrl: " << dqaccdctrl << endl;
+
+    _A.block(nv, 0, nv, nv) = dqaccdq * ilqr_dt;
+    _A.block(nv, nv, nv, nv).setIdentity();
+    _A.block(nv, nv, nv, nv) += dqaccdqvel * ilqr_dt;
+    _B.block(nv, 0, nv, nu) = dqaccdctrl * ilqr_dt;
+
+//    cout << "A matrix is: " << _A << endl;
+//    cout << " B Mtrix is: " << _B << endl;
 
 }
 

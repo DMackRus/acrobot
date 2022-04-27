@@ -12,6 +12,7 @@ extern mjvOption opt;			        // visualization options
 extern mjrContext con;				    // custom GPU context
 extern GLFWwindow *window;
 extern MujocoController *globalMujocoController;
+extern iLQR* optimiser;
 
 bool button_left = false;
 bool button_middle = false;
@@ -19,8 +20,8 @@ bool button_right = false;
 double lastx = 0;
 double lasty = 0;
 
-extern mjData* d_init;
-
+m_dof *finalControls = new m_dof[ILQR_HORIZON_LENGTH];
+m_dof *initControls = new m_dof[ILQR_HORIZON_LENGTH];
 
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods){
@@ -109,9 +110,6 @@ void setupMujocoWorld(){
     // make data corresponding to model
     mdata = mj_makeData(model);
 
-    //joint1 = mj_name2id(m, mjOBJ_JOINT, "panda0_joint1");
-    //joint2 = mj_name2id(m, mjOBJ_JOINT, "panda0_joint2");
-
     // init GLFW, create window, make OpenGL context current, request v-sync
     // init GLFW
     if (!glfwInit())
@@ -130,9 +128,6 @@ void setupMujocoWorld(){
     mjv_makeScene(model, &scn, 2000);
     mjr_makeContext(model, &con, mjFONTSCALE_150);
 
-    // turns gravity off
-    //model->opt.gravity[2] = 0;
-
     // install GLFW mouse and keyboard callbacks
     glfwSetKeyCallback(window, keyboard);
     glfwSetCursorPosCallback(window, mouse_move);
@@ -146,7 +141,7 @@ void render(){
     int controlNum = 0;
     bool showFinalControls = true;
     m_dof nextControl;
-    cpMjData(model, mdata, d_init);
+    cpMjData(model, mdata, optimiser->d_init);
     while (!glfwWindowShouldClose(window))
     {
         // advance interactive simulation for 1/60 sec
@@ -168,7 +163,7 @@ void render(){
 
             if(controlNum >= ILQR_HORIZON_LENGTH){
                 controlNum = 0;
-                cpMjData(model, mdata, d_init);
+                cpMjData(model, mdata, optimiser->d_init);
                 simstart = mdata->time;
                 showFinalControls = 1 - showFinalControls;
             }
@@ -239,4 +234,17 @@ void initMujoco(){
     globalMujocoController = new MujocoController(model, mdata);
     updateScreen();
 
+}
+
+m_dof returnNextControl(int controlNum, bool finalControl){
+    m_dof nextControl;
+
+    if(finalControl){
+        nextControl = finalControls[controlNum];
+    }
+    else{
+        nextControl = initControls[controlNum];
+    }
+
+    return nextControl;
 }

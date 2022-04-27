@@ -4,173 +4,40 @@
 
 #include "iLQR_dataCentric.h"
 
-/**************************************************************************
- *
- *  iLQR Parameters
- *
- *
- */
+//extern MujocoController *globalMujocoController;
+//extern mjModel* model;						// MuJoCo model
+//extern mjData* mdata;						// MuJoCo data
+//extern mjvCamera cam;                   // abstract camera
+//extern mjvScene scn;                    // abstract scene
+//extern mjvOption opt;			        // visualization options
+//extern mjrContext con;				    // custom GPU context
+//extern GLFWwindow *window;
 
-int linearising_num_sim_steps = 1;  // How many mujoco steps to use for linearising
-bool alphaSearchEnabled = true;     // Whether alpha search is enabled to maximise optimisation at each forwards pass
-float maxLamda = 10000;             // Maximum lambda before canceliing optimisation
-float minLamda = 0.00001;            // Minimum lamda
-float lamdaFactor = 10;             // Lamda multiplicative factor
-float epsConverge = 0.005;
+iLQR* optimiser;
 
+iLQR::iLQR(mjModel* m, mjData* d, m_state X0){
+    numIterations = 0;
+    lamda = 0.1;
 
-//float controlCost[DOF] = {0.0001, 0.0001, 0.0001, 0.0001, 0.00005, 0.00005, 0.00005};
-float controlCost[NUM_DOF] = {0.01, 0.01};
-float stateCosts[NUM_STATES] = {10, 10, 0.01, 0.01};
-float terminalScalarConstant = 4;
-int torqueLims[NUM_DOF] = {100};
-
-extern MujocoController *globalMujocoController;
-extern mjModel* model;						// MuJoCo model
-extern mjData* mdata;						// MuJoCo data
-extern mjvCamera cam;                   // abstract camera
-extern mjvScene scn;                    // abstract scene
-extern mjvOption opt;			        // visualization options
-extern mjrContext con;				    // custom GPU context
-extern GLFWwindow *window;
-
-mjData* dArray[ILQR_HORIZON_LENGTH+1];
-mjData* d_init;
-
-m_state X_desired;
-m_dof_dof R;
-m_state_state Q;
-
-float lamb = 0.1;
-int numIterations = 0;
-
-ofstream outputDiffDyn;
-
-std::string diffDynFilename = "diffDyn.csv";
-
-ofstream outputFile;
-
-std::string filename = "finalTrajectory.csv";
-
-m_dof *finalControls = new m_dof[ILQR_HORIZON_LENGTH];
-m_dof *initControls = new m_dof[ILQR_HORIZON_LENGTH];
-
-inline mjtNum stepCost(const mjData* d)
-{
-    mjtNum cost = d->qpos[0];
-    return cost;
-}
-
-void simpleTest(){
-    m_state X0;
-    X0 << 2.8, 0, 0, 0;
-
-    for(int i = 0; i < NUM_DOF; i++){
-        mdata->qpos[i] = X0(i);
-        mdata->qvel[i] = X0(i+2);
-    }
-
-    cout << "number of controls: " << model->nu << endl;
-
-    mdata->ctrl[1] = 10;
-
-//    m_state_state *f_x = new m_state_state[numControls];
-//    m_state_dof *f_u = new m_state_dof[numControls];
-//
-//    float l[numControls];
-//    m_state *l_x = new m_state[numControls + 1];
-//    m_state_state *l_xx = new m_state_state[numControls + 1];
-//    m_dof *l_u = new m_dof[numControls];
-//    m_dof_dof *l_uu = new m_dof_dof[numControls];
-//
-//    // Initialise state feedback gain matrices
-//    m_dof *k = new m_dof[numControls];
-//    m_dof_state *K = new m_dof_state[numControls];
-//
-//    l_xx[numControls] << 0.02, 0, 0, 0,
-//                         0, 0.02, 0, 0,
-//                         0, 0, 0.01, 0,
-//                         0, 0, 0, 0.01;
-//
-//    int bPStart = 2;
-//
-//    l_xx[numControls - bPStart] << 0.02, 0, 0, 0,
-//            0, 0.02, 0, 0,
-//            0, 0, 0.01, 0,
-//            0, 0, 0, 0.01;
-//
-//    l_uu[numControls] << 0.002;
-//    l_uu[numControls - bPStart] << 0.002;
-//
-//    f_x[numControls - bPStart] << 0.891, 0.0561, 0.0967, 0.00192,
-//                                  0.154, 0.846, 0.00475, 0.0950,
-//                                  -1.92, 0.980, 0.910, 0.0498,
-//                                  2.68, -2.716, 0.127, 0.868;
-//
-//    f_u[numControls - bPStart] << 0.540, 0.014, 9.67, 0.474;
-//
-//    l_x[numControls] << 0.00437, 0.00916, -0.00239, 0.00517;
-//
-//    l_x[numControls - bPStart] << 0.0051, 0.0056, -0.0006, 0.012;
-//
-//    l_u[numControls - bPStart] << 0.00000127;
-//
-//    // ---------------------------------------------------------------- //
-//
-//    l_xx[numControls - bPStart - 1] << 0.02, 0, 0, 0,
-//            0, 0.02, 0, 0,
-//            0, 0, 0.01, 0,
-//            0, 0, 0, 0.01;
-//
-//    l_uu[numControls - bPStart - 1] << 0.002;
-//
-//    f_x[numControls - bPStart - 1] << 0.895, 0.0542, 0.0966, 0.000917,
-//                                    0.146, 0.849, 0.00518, 0.0964,
-//                                    -1.87, 0.955, 0.910, 0.0316,
-//                                    2.56, -2.669, 0.133, 0.894;
-//
-//    f_u[numControls - bPStart - 1] << 0.540, 0.0156, 9.66, 0.505;
-//
-//    l_x[numControls - bPStart - 1] << 0.00498, 0.00318, 0.0026, 0.0110;
-//
-//    l_u[numControls - bPStart - 1] << -0.00000522;
-//
-//    // ------------------------------------------------------------------ //
-//
-//    backwardsPass_Quu_reg(f_x, f_u, l_x, l_xx, l_u, l_uu, k, K);
-}
-
-void testILQR(){
-    m_state X0;
-    X0 << 1.5, 0, 0, 0;
-
-
-    auto iLQRStart = high_resolution_clock::now();
+    // Initialise internal iLQR model and data
+    model = m;
+    mdata = mj_makeData(model);
+    cpMjData(model, mdata, d);
 
     initCostMatrices();
     initDesiredState();
 
-    for(int i = 0; i < NUM_DOF; i++){
-        mdata->qpos[i] = X0(i);
-        mdata->qvel[i] = X0(i+2);
+    // Set initial state and run mj_step several times to stabilise system
+    setState(mdata, X0);
+    for(int i = 0; i < 20; i++){
+        mj_step(model, mdata);
     }
-
-    m_state *X_lin = new m_state[ILQR_HORIZON_LENGTH + 1];
-    m_state *X_dyn = new m_state[ILQR_HORIZON_LENGTH + 1];
-    X_lin[0] = X0;
-    X_dyn[0] = X0;
-
-    m_state diff;
-    float sumDiff[NUM_STATES] = {0};
-    MatrixXd A_last = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
-    MatrixXd B_last = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
 
     d_init = mj_makeData(model);
     cpMjData(model, d_init, mdata);
-    dArray[0] = mj_makeData(model);
-    cpMjData(model, dArray[0], mdata);
 
     for(int i = 0; i <= ILQR_HORIZON_LENGTH; i++){
+        // populate dArray with mujoco data objects from start of trajec until end
         dArray[i] = mj_makeData(model);
         float vel = mdata->qvel[0];
         float kp = 0.1;
@@ -179,106 +46,23 @@ void testILQR(){
             initControls[i](k) = -kp * vel;
             mdata->ctrl[k] = initControls[i](k);
         }
+        // copy current data into current data array at correct timestep
         cpMjData(model, dArray[i], mdata);
 
+        // step simulation with initialised controls
         for(int i = 0; i < NUM_MJSTEPS_PER_CONTROL; i++){
             mj_step(model, mdata);
         }
-
-        // populate dArray with mujoco data objects from start of trajec until end
-
-        // copy current data into current data array place
-
-        // step simulation with initialised controls
     }
+    dArray[ILQR_HORIZON_LENGTH] = mj_makeData(model);
     cpMjData(model, dArray[ILQR_HORIZON_LENGTH], mdata);
 
+    // reset mdata back to initial state
     cpMjData(model, mdata, d_init);
-
-    if(TEST_LINEARISATION){
-        for(int i = 0;  i < ILQR_HORIZON_LENGTH; i++){
-            //globalMujocoController->setSystemState(X_dyn[i]);
-            MatrixXd A = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
-            MatrixXd B = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
-
-            lineariseDynamicsParallel(A, B, i);
-
-            mj_step(model, mdata);
-
-            X_dyn[i + 1] = returnState(dArray[i]);
-
-
-            m_state xdot_lin;
-            m_state actual_x_dot;
-
-//            m_state_state A_dt;
-//            m_state_dof B_dt;
-//            int scale = mujoco_steps_per_dt / linearising_num_sim_steps;
-            //scaleLinearisation(A, B, A_dt, B_dt, scale);
-
-            //X_lin[i+1] = (A * X_lin[i]) + (B * initControls);
-            xdot_lin = X_lin[i+1] - X_lin[i];
-            actual_x_dot = X_dyn[i+1] - X_dyn[i];
-
-//            cout << "xdot linearising was: " << endl;
-//            cout << xdot_lin << endl;
-//            cout << "xdot from dynamics was: " << endl;
-//            cout << actual_x_dot << endl;
-            cout << "XLin is: " << endl;
-            cout << X_lin[i+1] << endl;
-            cout << "XDyn is: " << endl;
-            cout << X_dyn[i+1] << endl;
-
-//            m_state A_temp = (A * X_dyn[i]);
-//            m_state B_temp = (B * initControls[i]);
-//            //cout << "A part is: " << endl << A_temp << endl;
-//            //cout << "b part is: " << endl << B_temp << endl;
-//            cout << "A" << endl << A_dt << endl;
-//            cout << "B" << endl << B_dt << endl;
-
-            diff = (actual_x_dot - xdot_lin);
-
-//            for(int j = 0; j < NUM_STATES; j++){
-//                if(diff(j) > 0.1){
-//                    cout << "index: " << j << endl;
-//                    int a = 1;
-//                }
-//                if(diff(j) < -0.1){
-//                    cout << "index: " << j << endl;
-//                    int a = 1;
-//                }
-//            }
-
-//            for(int  j = 0; j < NUM_STATES; j++){
-//                sumDiff[j] += pow((X_dyn[i](j) - X_lin[i](j)), 2);
-//
-//            }
-        }
-
-        cout << "sum squared diff at end: " << endl;
-        float totalBadness = 0.0f;
-        for(int i = 0; i < NUM_STATES; i++){
-            cout << sumDiff[i] << " "  << endl;
-            totalBadness += sumDiff[i];
-        }
-        cout << "total badness: " << totalBadness << endl;
-        saveStates(X_dyn, X_lin);
-    }
-
-    iLQR(X0, finalControls, X_dyn);
-
-    auto iLQRStop = high_resolution_clock::now();
-    auto iLQRDur = duration_cast<microseconds>(iLQRStop - iLQRStart);
-
-    cout << "iLQR took " << iLQRDur.count()/1000000 << " seconds" << endl;
-
-    cout << "final control: " << finalControls[ILQR_HORIZON_LENGTH - 1] << endl;
-
-    saveTrajecToCSV(finalControls, X_dyn);
 
 }
 
-void iLQR(m_state X0, m_dof *U, m_state *X){
+void iLQR::optimise(m_dof *U, m_state *X){
     bool optimisationFinished = false;
     int numIterations = 0;
     float newCost = 0;
@@ -303,11 +87,6 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
     m_dof *U_new = new m_dof[ILQR_HORIZON_LENGTH];
     m_state *X_new = new m_state[ILQR_HORIZON_LENGTH + 1];
 
-    //Perform a forward pass with initialised controls - FILL
-    //oldCost = rollOutTrajectory(X0, X, U, numControls);
-    //cout << "INITIAL COST FROM WARM START TRAJECTORY IS: " << oldCost << endl;
-
-
     // iterate until optimisation finished
     while(!optimisationFinished){
         numIterations++;
@@ -317,7 +96,7 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
 
         // Linearise the dynamics and save cost values at each state
         // STEP 1 - Linearise dynamics and calculate cost quadratics at every time step
-        differentiateDynamics(f_x, f_u, l_x, l_xx, l_u, l_uu);
+        getDerivatives(f_x, f_u, l_x, l_xx, l_u, l_uu);
 
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
@@ -333,16 +112,16 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
             validBackPass = backwardsPass_Quu_reg(f_x, f_u, l_x, l_xx, l_u, l_uu, k, K);
 
             if (!validBackPass) {
-                if (lamb < maxLamda) {
-                    lamb *= lamdaFactor;
+                if (lamda < maxLamda) {
+                    lamda *= lamdaFactor;
                 } else {
                     lamdaExit = true;
                     optimisationFinished = true;
                     break;
                 }
             } else {
-                if (lamb > minLamda) {
-                    lamb /= lamdaFactor;
+                if (lamda > minLamda) {
+                    lamda /= lamdaFactor;
                 }
             }
         }
@@ -364,7 +143,7 @@ void iLQR(m_state X0, m_dof *U, m_state *X){
     }
 }
 
-void differentiateDynamics(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu){
+void iLQR::getDerivatives(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu){
 
     MatrixXd A = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
     MatrixXd B = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
@@ -375,8 +154,7 @@ void differentiateDynamics(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m
     MatrixXd A_dt = ArrayXXd::Zero(NUM_STATES, NUM_STATES);
     MatrixXd B_dt = ArrayXXd::Zero(NUM_STATES, NUM_DOF);
 
-    // Linearise the dynamics along the trajectory
-    cout << "------------------------ LINEARISE DYNAMICS -----------------------------" << endl;
+
 
     int save_iterations = model->opt.iterations;
     mjtNum save_tolerance = model->opt.tolerance;
@@ -384,6 +162,7 @@ void differentiateDynamics(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m
     model->opt.iterations = 30;
     model->opt.tolerance = 0;
 
+    // Linearise the dynamics along the trajectory
     for(int t = 0; t < ILQR_HORIZON_LENGTH; t++){
         // Calculate linearised dynamics for current time step via finite differencing
         //lineariseDynamicsSerial_trial(A_test, B_test, t);
@@ -415,10 +194,88 @@ void differentiateDynamics(m_state_state *f_x, m_state_dof *f_u, m_state *l_x, m
     l_x [ILQR_HORIZON_LENGTH] *= ILQR_DT;
     l_xx[ILQR_HORIZON_LENGTH] *= ILQR_DT;
 
-    cout << "---------------------- END LINEARISE DYNAMICS -----------------------------" << endl;
 }
 
-void scaleLinearisation(Ref<m_state_state> A_scaled, Ref<m_state_dof> B_scaled, Ref<m_state_state> A, Ref<m_state_dof> B, int num_steps_per_dt){
+//void simpleTest(){
+//    m_state X0;
+//    X0 << 2.8, 0, 0, 0;
+//
+//    for(int i = 0; i < NUM_DOF; i++){
+//        mdata->qpos[i] = X0(i);
+//        mdata->qvel[i] = X0(i+2);
+//    }
+//
+//    cout << "number of controls: " << model->nu << endl;
+//
+//    mdata->ctrl[1] = 10;
+//
+////    m_state_state *f_x = new m_state_state[numControls];
+////    m_state_dof *f_u = new m_state_dof[numControls];
+////
+////    float l[numControls];
+////    m_state *l_x = new m_state[numControls + 1];
+////    m_state_state *l_xx = new m_state_state[numControls + 1];
+////    m_dof *l_u = new m_dof[numControls];
+////    m_dof_dof *l_uu = new m_dof_dof[numControls];
+////
+////    // Initialise state feedback gain matrices
+////    m_dof *k = new m_dof[numControls];
+////    m_dof_state *K = new m_dof_state[numControls];
+////
+////    l_xx[numControls] << 0.02, 0, 0, 0,
+////                         0, 0.02, 0, 0,
+////                         0, 0, 0.01, 0,
+////                         0, 0, 0, 0.01;
+////
+////    int bPStart = 2;
+////
+////    l_xx[numControls - bPStart] << 0.02, 0, 0, 0,
+////            0, 0.02, 0, 0,
+////            0, 0, 0.01, 0,
+////            0, 0, 0, 0.01;
+////
+////    l_uu[numControls] << 0.002;
+////    l_uu[numControls - bPStart] << 0.002;
+////
+////    f_x[numControls - bPStart] << 0.891, 0.0561, 0.0967, 0.00192,
+////                                  0.154, 0.846, 0.00475, 0.0950,
+////                                  -1.92, 0.980, 0.910, 0.0498,
+////                                  2.68, -2.716, 0.127, 0.868;
+////
+////    f_u[numControls - bPStart] << 0.540, 0.014, 9.67, 0.474;
+////
+////    l_x[numControls] << 0.00437, 0.00916, -0.00239, 0.00517;
+////
+////    l_x[numControls - bPStart] << 0.0051, 0.0056, -0.0006, 0.012;
+////
+////    l_u[numControls - bPStart] << 0.00000127;
+////
+////    // ---------------------------------------------------------------- //
+////
+////    l_xx[numControls - bPStart - 1] << 0.02, 0, 0, 0,
+////            0, 0.02, 0, 0,
+////            0, 0, 0.01, 0,
+////            0, 0, 0, 0.01;
+////
+////    l_uu[numControls - bPStart - 1] << 0.002;
+////
+////    f_x[numControls - bPStart - 1] << 0.895, 0.0542, 0.0966, 0.000917,
+////                                    0.146, 0.849, 0.00518, 0.0964,
+////                                    -1.87, 0.955, 0.910, 0.0316,
+////                                    2.56, -2.669, 0.133, 0.894;
+////
+////    f_u[numControls - bPStart - 1] << 0.540, 0.0156, 9.66, 0.505;
+////
+////    l_x[numControls - bPStart - 1] << 0.00498, 0.00318, 0.0026, 0.0110;
+////
+////    l_u[numControls - bPStart - 1] << -0.00000522;
+////
+////    // ------------------------------------------------------------------ //
+////
+////    backwardsPass_Quu_reg(f_x, f_u, l_x, l_xx, l_u, l_uu, k, K);
+//}
+
+void iLQR::scaleLinearisation(Ref<m_state_state> A_scaled, Ref<m_state_dof> B_scaled, Ref<m_state_state> A, Ref<m_state_dof> B, int num_steps_per_dt){
 
     // TODO look into ways of speeding up matrix to the power of calculation
     A_scaled = A.replicate(1, 1);
@@ -437,7 +294,7 @@ void scaleLinearisation(Ref<m_state_state> A_scaled, Ref<m_state_dof> B_scaled, 
     }
 }
 
-bool backwardsPass_Quu_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
+bool iLQR::backwardsPass_Quu_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
     m_state V_x;
     V_x = l_x[ILQR_HORIZON_LENGTH];
     m_state_state V_xx;
@@ -450,16 +307,6 @@ bool backwardsPass_Quu_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
         m_dof_dof Q_uu;
         m_dof_state Q_ux;
 
-//        cout << "iteration: " << t << endl;
-//        cout << "V_x " << V_x << endl;
-//        cout << "V_xx " << V_xx << endl;
-//        cout << "A[t] " << A[t] << endl;
-//        cout << "B[t] " << B[t] << endl;
-//        cout << "l_x[t] " << l_x[t] << endl;
-//        cout << "l_xx[t] " << l_xx[t] << endl;
-//        cout << "l_u[t] " << l_u[t] << endl;
-//        cout << "l_uu[t] " << l_uu[t] << endl;
-
         Q_u = l_u[t] + (B[t].transpose() * V_x);
 
         Q_x = l_x[t] + (A[t].transpose() * V_x);
@@ -470,25 +317,12 @@ bool backwardsPass_Quu_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
 
         Q_xx = l_xx[t] + (A[t].transpose() * (V_xx * A[t]));
 
-//        cout << "A " << A[t] << endl;
-//        cout << "B  " << B[t] << endl;
-//
-//        cout << "Q_x " << Q_x << endl;
-//        cout << "Q_u " << Q_u << endl;
-//
-//        cout << "Q_xx " << Q_xx << endl;
-//        cout << "Q_uu " << Q_uu << endl;
-//        cout << "Q_ux " << Q_ux << endl;
 
         m_dof_dof Q_uu_reg = Q_uu.replicate(1, 1);
 
-        //cout << "Q_uu_reg " << Q_uu_reg << endl;
-
         for(int i = 0; i < NUM_DOF; i++){
-            Q_uu_reg(i, i) += lamb;
+            Q_uu_reg(i, i) += lamda;
         }
-
-
 
         if(Q_uu_reg(0, 0) < 0){
             return false;
@@ -499,61 +333,20 @@ bool backwardsPass_Quu_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
         I.setIdentity();
         m_dof_dof Q_uu_inv = temp.solve(I);
 
-
-        //cout << "Q_uu_inv " << Q_uu_inv << endl;
-
-        // Caluclate Q_uu_inverse via eigen vector regularisation
-//        SelfAdjointEigenSolver<m_dof_dof> eigensolver(Q_uu);
-//
-//        m_dof eigVals = eigensolver.eigenvalues();
-//        m_dof_dof eigVecs = eigensolver.eigenvectors();
-//
-//        for(int i = 0; i < NUM_DOF; i++){
-//            if(eigVals(i) < 0) eigVals(i) = 0.0f;
-//            eigVals(i) += lamb;
-//            eigVals(i) = 1 / eigVals(i);
-//        }
-//
-//        m_dof_dof diagMat;
-//
-//        diagMat = eigVals.asDiagonal();
-//
-//        m_dof_dof Q_uu_inv;
-//        Q_uu_inv = eigVecs * diagMat * eigVecs.transpose();
-
-
         k[t] = -Q_uu_inv * Q_u;
         K[t] = -Q_uu_inv * Q_ux;
-//        cout << "k[t] " << k[t] << endl;
-//        cout << "K[t] " << K[t] << endl;
 
         V_x = Q_x + (K[t].transpose() * (Q_uu * k[t])) + (K[t].transpose() * Q_u) + (Q_ux.transpose() * k[t]);
         V_xx = Q_xx + (K[t].transpose() * (Q_uu * K[t])) + (K[t].transpose() * Q_ux) + (Q_ux.transpose() * K[t]);
 
         V_xx = (V_xx + V_xx.transpose()) / 2;
 
-        int df = 1;
-
-        if(t > ILQR_HORIZON_LENGTH){
-            cout << "---------------------------------------" << endl;
-            cout << "control number  " << t << endl;
-            cout << "k[t] " << k[t] << endl;
-            cout << "K[t]" << K[t] << endl;
-            cout << "l_x[t] " << endl << l_x[t] << endl;
-            cout << "l_xx[t] " << endl  << l_xx[t] << endl;
-            cout << "Q_ux" << Q_ux<< endl;
-            cout << "V_xx" << V_xx<< endl;
-            cout << "B" << B[t] << endl;
-            cout << "A" << A[t]<< endl;
-            int a = 1;
-
-        }
     }
 
     return true;
 }
 
-void backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
+void iLQR::backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_state_state *l_xx, m_dof *l_u, m_dof_dof *l_uu, m_dof *k,  m_dof_state *K){
     m_state V_x;
     V_x = l_x[ILQR_HORIZON_LENGTH - 1];
     m_state_state V_xx;
@@ -569,7 +362,7 @@ void backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
 
         V_xx_reg = V_xx.replicate(1, 1);
         for(int i = 0; i < NUM_STATES; i++){
-            V_xx_reg(i, i) += lamb;
+            V_xx_reg(i, i) += lamda;
         }
 
         Q_x = l_x[t] + (A[t].transpose() * V_x);
@@ -604,7 +397,7 @@ void backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
     }
 }
 
-float forwardsPass(m_dof *k, m_dof_state *K, float oldCost){
+float iLQR::forwardsPass(m_dof *k, m_dof_state *K, float oldCost){
     m_dof *U_new = new m_dof[ILQR_HORIZON_LENGTH];
     float alpha = 1.0;
     float newCost = 0;
@@ -704,7 +497,7 @@ float forwardsPass(m_dof *k, m_dof_state *K, float oldCost){
     return newCost;
 }
 
-bool checkForConvergence(float newCost, float oldCost){
+bool iLQR::checkForConvergence(float newCost, float oldCost){
     bool convergence = false;
     m_state terminalState = returnState(dArray[ILQR_HORIZON_LENGTH]);
 
@@ -724,7 +517,7 @@ bool checkForConvergence(float newCost, float oldCost){
     return convergence;
 }
 
-//void lineariseDynamicsSerial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum){
+//void iLQR::lineariseDynamicsSerial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum){
 //
 //    float eps = 1e-5;
 //
@@ -801,7 +594,7 @@ bool checkForConvergence(float newCost, float oldCost){
 //
 //}
 
-void lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum, float ilqr_dt){
+void iLQR::lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum, float ilqr_dt){
 
     // Initialise variables
     int nv = model->nv;
@@ -956,7 +749,7 @@ void lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int contr
 
 }
 
-float calcStateCost(mjData *d){
+float iLQR::calcStateCost(mjData *d){
     float stateCost;
     m_state X_diff;
     m_state X;
@@ -979,7 +772,7 @@ float calcStateCost(mjData *d){
     return stateCost;
 }
 
-float calcCostDerivatives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref<m_dof> l_u, Ref<m_dof_dof> l_uu, int controlNum){
+float iLQR::calcCostDerivatives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref<m_dof> l_u, Ref<m_dof_dof> l_uu, int controlNum){
     m_state X_diff;
     m_state X;
     m_dof U;
@@ -999,7 +792,7 @@ float calcCostDerivatives(Ref<m_state> l_x, Ref<m_state_state> l_xx, Ref<m_dof> 
     l_uu = 2 * R;
 }
 
-m_dof returnStateControls(mjData *data){
+m_dof iLQR::returnStateControls(mjData *data){
     m_dof controls;
     for(int i = 0; i < NUM_DOF; i++){
         controls(i) = data->ctrl[i];
@@ -1008,7 +801,7 @@ m_dof returnStateControls(mjData *data){
     return controls;
 }
 
-m_state returnState(mjData *data){
+m_state iLQR::returnState(mjData *data){
     m_state state;
 
     for(int i = 0; i < model->nv; i++){
@@ -1019,20 +812,22 @@ m_state returnState(mjData *data){
     return state;
 }
 
-void setState(mjData *data, m_state desiredState){
+void iLQR::setState(mjData *data, m_state desiredState){
     for(int i = 0; i < model->nv; i++){
         data->qpos[i] = desiredState(i);
         data->qvel[i] = desiredState(i+2);
     }
 }
 
-void setControl(mjData *data, m_dof desiredControl){
+void iLQR::setControl(mjData *data, m_dof desiredControl){
     for(int i = 0; i < NUM_DOF; i++){
         data->ctrl[i] = desiredControl(i);
     }
 }
 
-void initCostMatrices(){
+
+
+void iLQR::initCostMatrices(){
     R.setIdentity();
     for(int i = 0; i < NUM_DOF; i++){
         R(i, i) = controlCost[i];
@@ -1044,89 +839,11 @@ void initCostMatrices(){
 
 }
 
-void initDesiredState(){
+void iLQR::initDesiredState(){
     // 0 , 0 is upright for pendulum
     // Pi, 0 is facing towards the ground
     X_desired << 0, 0, 0, 0;
 
-    outputFile.open(filename);
-    outputFile << "Control Number" << ",";
-
-    for(int i = 0; i < NUM_DOF; i++){
-        string title = "T" + i;
-        outputFile << title << ",";
-    }
-
-    for(int i = 0; i < NUM_STATES / 2; i++){
-        string title = "P" + i;
-        outputFile << title << ",";
-    }
-
-    for(int i = 0; i < NUM_STATES / 2; i++){
-        string title = "V" + i;
-        outputFile << title << ",";
-    }
-    outputFile << endl;
-}
-
-void saveStates(m_state *X_dyn, m_state *X_lin){
-    ofstream outputDiffDyn;
-
-    std::string diffDynFilename = "diffDyn.csv";
-    outputDiffDyn.open(diffDynFilename);
-    outputDiffDyn << "X0 dyn" << "," << "X0 lin" << "," << "X0 diff" << "," << "X1 dyn" << "," << "X1 lin" << "," << "X1 diff" << ",";
-    outputDiffDyn << "X2 dyn" << "," << "X2 lin" << "," << "X2 diff" << "," << "X3 dyn" << "," << "X3 lin" << "," << "X3 diff" << ",";
-    outputDiffDyn << "X4 dyn" << "," << "X4 lin" << "," << "X4 diff" << "," << "X5 dyn" << "," << "X5 lin" << "," << "X5 diff" << ",";
-    outputDiffDyn << "X6 dyn" << "," << "X6 lin" << "," << "X6 diff" << "," << "X7 dyn" << "," << "X7 lin" << "," << "X7 diff" << ",";
-    outputDiffDyn << "X8 dyn" << "," << "X8 lin" << "," << "X8 diff" << "," << "X9 dyn" << "," << "X9 lin" << "," << "X9 diff" << ",";
-    outputDiffDyn << "X10 dyn" << "," << "X10 lin" << "," << "X10 diff" << "," << "X11 dyn" << "," << "X11 lin" << "," << "X11 diff" << ",";
-    outputDiffDyn << "X12 dyn" << "," << "X12 lin" << "," << "X12 diff" << "," << "X13 dyn" << "," << "X13 lin" << "," << "X13 diff" << ",";
-    outputDiffDyn << "X14 dyn" << "," << "X14 lin" << "," << "X14 diff" << "," << "X15 dyn" << "," << "X15 lin" << "," << "X15 diff" << "," << endl;
-
-    for(int i = 0; i < ILQR_HORIZON_LENGTH; i++){
-        for(int j = 0; j < NUM_STATES; j++){
-            outputDiffDyn << X_dyn[i](j) << ",";
-            outputDiffDyn << X_lin[i](j) << ",";
-            outputDiffDyn << X_lin[i](j) - X_dyn[i](j) << ",";
-        }
-        outputDiffDyn << endl;
-    }
-
-}
-
-m_dof returnNextControl(int controlNum, bool finalControl){
-    m_dof nextControl;
-
-    if(finalControl){
-        nextControl = finalControls[controlNum];
-    }
-    else{
-        nextControl = initControls[controlNum];
-    }
-
-    return nextControl;
-}
-
-void saveTrajecToCSV(m_dof *U, m_state *X){
-
-    for(int i = 0; i < ILQR_HORIZON_LENGTH; i++){
-        outputFile << i << ",";
-
-        for(int j = 0; j < NUM_DOF; j++){
-            outputFile << U[i](j) << ",";
-        }
-
-        for(int j = 0; j < NUM_STATES / 2; j++){
-            outputFile << X[i](j) << ",";
-        }
-
-        for(int j = 0; j < NUM_STATES / 2; j++){
-            outputFile << X[i](j+2) << ",";
-        }
-        outputFile << endl;
-    }
-
-    outputFile.close();
 }
 
 void cpMjData(const mjModel* m, mjData* d_dest, const mjData* d_src){

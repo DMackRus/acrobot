@@ -18,4 +18,6 @@ void render_simpleTest();
 void initMujoco();
 void updateScreen();
 
+m_dof returnNextControl(int controlNum, bool finalControl)
+
 #endif //MUJOCO_SANDBOX_MUJOCOUI_H

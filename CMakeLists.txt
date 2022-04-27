@@ -34,12 +34,6 @@ link_directories(${Mujoco_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} main.cpp
         Utility/MujocoController/MujocoUI.cpp Utility/MujocoController/MujocoUI.h
         Utility/MujocoController/MujocoController.cpp Utility/MujocoController/MujocoController.h
-        differentiator.h mjderivative.cpp mjderivative.h
-        update.h update.cpp
-        util.cpp util.h
-#        iLQR/iLQR_funcs.cpp iLQR/iLQR_funcs.h
-#        iLQR/ilqrCore.cpp iLQR/ilqrCore.h
-#        iLQR/iLQR.cpp iLQR/iLQR.h
         iLQR/iLQR_dataCentric.cpp iLQR/iLQR_dataCentric.h)
 
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen ${LIB_MUJOCO} ${GLFW} libGL.so libglew.so GL)

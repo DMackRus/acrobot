@@ -6,9 +6,6 @@
 #define MUJOCO_ACROBOT_CONTROL_ILQR_DATACENTRIC_H
 
 #include "../Utility/MujocoController/MujocoController.h"
-#include "ilqrCore.h"
-#include "iLQR_funcs.h"
-#include "../util.h"
 
 #define MUJOCO_DT 0.002
 #define ILQR_DT 0.01
@@ -48,5 +45,7 @@ void simpleTest();
 
 void saveStates(m_state *X_dyn, m_state *X_lin);
 void saveTrajecToCSV(m_dof *U, m_state *X);
+
+void cpMjData(const mjModel* m, mjData* d_dest, const mjData* d_src);
 
 #endif //MUJOCO_ACROBOT_CONTROL_ILQR_DATACENTRIC_H

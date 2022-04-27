@@ -567,9 +567,6 @@ void backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
         m_dof_state Q_ux;
         m_state_state V_xx_reg;
 
-//        cout << "V_x " << V_x << endl;
-//        cout << "V_xx " << V_xx << endl;
-
         V_xx_reg = V_xx.replicate(1, 1);
         for(int i = 0; i < NUM_STATES; i++){
             V_xx_reg(i, i) += lamb;
@@ -585,17 +582,6 @@ void backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
 
         Q_ux = (B[t].transpose() * (V_xx * A[t]));
 
-
-//        cout << "A " << A[t] << endl;
-//        cout << "B  " << B[t] << endl;
-//
-//        cout << "Q_x " << Q_x << endl;
-//        cout << "Q_u " << Q_u << endl;
-//
-//        cout << "Q_xx " << Q_xx << endl;
-//        cout << "Q_uu " << Q_uu << endl;
-//        cout << "Q_ux " << Q_ux << endl;
-
         m_dof_dof Q_uu_reg;
         m_dof_state Q_ux_reg;
 
@@ -607,40 +593,14 @@ void backwardsPass_Vxx_reg(m_state_state *A, m_state_dof *B, m_state *l_x, m_sta
         m_dof_dof I;
         I.setIdentity();
         m_dof_dof Q_uu_inv = temp.solve(I);
-        //cout << "Q_uu_inv " << Q_uu_inv << endl;
 
         k[t] = -Q_uu_inv * Q_u;
         K[t] = -Q_uu_inv * Q_ux_reg;
-//        cout << "k[t] " << k[t] << endl;
-//        cout << "K[t] " << K[t] << endl;
 
         V_x = Q_x + (K[t].transpose() * (Q_uu * k[t])) + (K[t].transpose() * Q_u) + (Q_ux.transpose() * k[t]);
 
         V_xx = Q_xx + (K[t].transpose() * (Q_uu * K[t])) + (K[t].transpose() * Q_ux) + (Q_ux.transpose() * K[t]);
 
-
-        //V_x = Q_x - (Q_u * Q_uu_inv * Q_ux).transpose();
-        //cout << "V_x " << V_x << endl;
-        //V_xx = Q_xx + (Q_ux.transpose() * Q_uu_inv * Q_ux);
-        //cout << "V_xx " << V_xx << endl;
-        int df = 1;
-
-
-
-        if(t > ILQR_HORIZON_LENGTH){
-            cout << "---------------------------------------" << endl;
-            cout << "control number  " << t << endl;
-            cout << "k[t] " << k[t] << endl;
-            cout << "K[t]" << K[t] << endl;
-            cout << "l_x[t] " << endl << l_x[t] << endl;
-            cout << "l_xx[t] " << endl  << l_xx[t] << endl;
-            cout << "Q_ux" << Q_ux<< endl;
-            cout << "V_xx" << V_xx<< endl;
-            cout << "B" << B[t] << endl;
-            cout << "A" << A[t]<< endl;
-            int a = 1;
-
-        }
     }
 }
 
@@ -650,7 +610,6 @@ float forwardsPass(m_dof *k, m_dof_state *K, float oldCost){
     float newCost = 0;
     bool costReduction = false;
 
-    //cout << "-------------------- START FORWARDS PASS ------------------------" << endl;
     while(!costReduction){
         cpMjData(model, mdata, d_init);
         newCost = 0;
@@ -679,16 +638,7 @@ float forwardsPass(m_dof *k, m_dof_state *K, float oldCost){
 
             U_new[t] = U_last + (alpha * k[t]) + feedBackGain;
 
-                //            cout << "old state was: " << endl << X << endl;
-//            cout << "new state is: " << endl << X_new << endl;
-//
-//            cout << "feedback : " << endl << stateFeedback << endl;
-//            cout << "feedback gain: " << endl << feedBackGain << endl;
-
-//                cout << "old control was: " << endl << U_last << endl;
-//                cout << "new control is: " << endl << U_new[controlNumber] << endl;
-
-                // constrain new torque within limits
+            // constrain new torque within limits
             for(int k = 0; k < NUM_DOF; k++){
                 //if(U_new[t](k) > torqueLims[k]) U_new[t](k) = torqueLims[k];
                 //if(U_new[t](k) < -torqueLims[k]) U_new[t](k) = -torqueLims[k];
@@ -746,11 +696,10 @@ float forwardsPass(m_dof *k, m_dof_state *K, float oldCost){
     }
 
     m_state termStateBest = returnState(dArray[ILQR_HORIZON_LENGTH]);
-    cout << "terminal state best: " << endl << termStateBest << endl;
-    cout << "middle control 250 was: " << endl << returnStateControls(dArray[250]) << endl;
-    cout << "best alpha was " << alpha << endl;
-    cout << "best cost was " << newCost << endl;
-    cout << "-------------------- END FORWARDS PASS ------------------------" << endl;
+//    cout << "terminal state best: " << endl << termStateBest << endl;
+//    cout << "best alpha was " << alpha << endl;
+//    cout << "best cost was " << newCost << endl;
+//    cout << "-------------------- END FORWARDS PASS ------------------------" << endl;
 
     return newCost;
 }
@@ -767,7 +716,7 @@ bool checkForConvergence(float newCost, float oldCost){
     numIterations++;
     float costGrad = (oldCost - newCost)/newCost;
 
-    if((numIterations > 5) && costGrad < epsConverge) {
+    if((numIterations > 2) && costGrad < epsConverge) {
         convergence = true;
         cout << "ilQR converged, num Iterations: " << numIterations << " final cost: " << newCost << endl;
     }
@@ -775,130 +724,82 @@ bool checkForConvergence(float newCost, float oldCost){
     return convergence;
 }
 
-void lineariseDynamicsParallel(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum){
-    const int degreesOfFreedom = 2;
-    const int controls = 1;
-
-    using x_t = Differentiator<degreesOfFreedom, controls>::x_t;
-    using u_t = Differentiator<degreesOfFreedom, controls>::u_t;
-
-    // linearize around set state and control
-    stepCostFn_t stepCostFn = stepCost;
-//    cout << " control " << controlNum << " is: " << dArray[controlNum]->ctrl[0] << endl;
-
-    if(controlNum == 250){
-        m_state termStateBest = returnState(dArray[ILQR_HORIZON_LENGTH]);
-        cout << "terminal state best: " << endl << termStateBest << endl;
-        cout << "middle control 250 was: " << endl << returnStateControls(dArray[controlNum])(0) << endl;
-    }
-
-
-    Differentiator<degreesOfFreedom, controls>* differentiator = new Differentiator<degreesOfFreedom, controls>(model, dArray[controlNum], stepCostFn);
-    differentiator->setMJData(dArray[controlNum]);
-    differentiator->updateDerivatives();
-
-
-
-    _A = *(differentiator->A);
-    _B = *(differentiator->B);
-
-//    if(controlNum % 50 == 0){
-//        cpMjData(model, mdata, dArray[controlNum]);
-//        mj_forward(model, mdata);
-//        // get framebuffer viewport
-//        mjrRect viewport = { 0, 0, 0, 0 };
-//        glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+//void lineariseDynamicsSerial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum){
 //
-//        // update scene and render
-//        mjv_updateScene(model, mdata, &opt, NULL, &cam, mjCAT_ALL, &scn);
-//        mjr_render(viewport, &scn, &con);
+//    float eps = 1e-5;
 //
-//        // swap OpenGL buffers (blocking call due to v-sync)
-//        glfwSwapBuffers(window);
+//    // calculate A matrix
+//    m_state X_copy = returnState(dArray[controlNum]);
+//    mjData *saveData;
+//    saveData = mj_makeData(model);
+//    cpMjData(model, saveData, dArray[controlNum]);
 //
-//        // process pending GUI events, call GLFW callbacks
-//        glfwPollEvents();
-//        cout << "A matrix is: " << _A << endl;
-//        int a = 1;
+//    for(int i = 0; i < NUM_STATES; i++){
+//        m_state decX = X_copy.replicate(1, 1);
+//        m_state incX = X_copy.replicate(1, 1);
+//
+//        decX(i) -= eps;
+//        incX(i) += eps;
+//
+//        m_state stateInc;
+//        m_state stateDec;
+//
+//        setState(saveData, decX);
+//        mj_step(model, saveData);
+//        stateDec = returnState(saveData);
+//
+//        // Undo pertubation
+//        cpMjData(model, saveData, dArray[controlNum]);
+//
+//        setState(saveData, incX);
+//        mj_step(model, saveData);
+//        stateInc = returnState(saveData);
+//
+//        // Undo pertubation
+//        cpMjData(model, saveData, dArray[controlNum]);
+//
+//        for(int j = 0; j < NUM_STATES; j++){
+//            _A(j, i) = (stateInc(j) - stateDec(j)) / (2 * eps);
+//        }
+//
 //    }
-}
-
-void lineariseDynamicsSerial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum){
-
-    float eps = 1e-5;
-
-    // calculate A matrix
-    m_state X_copy = returnState(dArray[controlNum]);
-    mjData *saveData;
-    saveData = mj_makeData(model);
-    cpMjData(model, saveData, dArray[controlNum]);
-
-    for(int i = 0; i < NUM_STATES; i++){
-        m_state decX = X_copy.replicate(1, 1);
-        m_state incX = X_copy.replicate(1, 1);
-
-        decX(i) -= eps;
-        incX(i) += eps;
-
-        m_state stateInc;
-        m_state stateDec;
-
-        setState(saveData, decX);
-        mj_step(model, saveData);
-        stateDec = returnState(saveData);
-
-        // Undo pertubation
-        cpMjData(model, saveData, dArray[controlNum]);
-
-        setState(saveData, incX);
-        mj_step(model, saveData);
-        stateInc = returnState(saveData);
-
-        // Undo pertubation
-        cpMjData(model, saveData, dArray[controlNum]);
-
-        for(int j = 0; j < NUM_STATES; j++){
-            _A(j, i) = (stateInc(j) - stateDec(j)) / (2 * eps);
-        }
-
-    }
-
-    // calculate B matrix
-    for(int i = 0; i < NUM_DOF; i++){
-        m_dof decControl = returnStateControls(dArray[controlNum]);
-        m_dof incControl = returnStateControls(dArray[controlNum]);
-
-        decControl(i) -= eps;
-        incControl(i) += eps;
-
-        m_state stateInc;
-        m_state stateDec;
-
-        setControl(saveData, decControl);
-        mj_step(model, saveData);
-        stateDec = returnState(saveData);
-
-        // Undo pertubation
-        cpMjData(model, saveData, dArray[controlNum]);
-
-        setControl(saveData, incControl);
-        mj_step(model, saveData);
-        stateInc = returnState(saveData);
-
-        // Undo pertubation
-        cpMjData(model, saveData, dArray[controlNum]);
-
-        for(int j = 0; j < NUM_STATES; j++){
-            _B(j, i) = (stateInc(j) - stateDec(j)) / (2 * eps);
-        }
-    }
-
-    mj_deleteData(saveData);
-
-    //cout << "A matrix is: " << _A << endl;
-    //cout << " B Mtrix is: " << _B << endl;
-
-}
+//
+//    // calculate B matrix
+//    for(int i = 0; i < NUM_DOF; i++){
+//        m_dof decControl = returnStateControls(dArray[controlNum]);
+//        m_dof incControl = returnStateControls(dArray[controlNum]);
+//
+//        decControl(i) -= eps;
+//        incControl(i) += eps;
+//
+//        m_state stateInc;
+//        m_state stateDec;
+//
+//        setControl(saveData, decControl);
+//        mj_step(model, saveData);
+//        stateDec = returnState(saveData);
+//
+//        // Undo pertubation
+//        cpMjData(model, saveData, dArray[controlNum]);
+//
+//        setControl(saveData, incControl);
+//        mj_step(model, saveData);
+//        stateInc = returnState(saveData);
+//
+//        // Undo pertubation
+//        cpMjData(model, saveData, dArray[controlNum]);
+//
+//        for(int j = 0; j < NUM_STATES; j++){
+//            _B(j, i) = (stateInc(j) - stateDec(j)) / (2 * eps);
+//        }
+//    }
+//
+//    mj_deleteData(saveData);
+//
+//    //cout << "A matrix is: " << _A << endl;
+//    //cout << " B Mtrix is: " << _B << endl;
+//
+//}
 
 void lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum, float ilqr_dt){
 
@@ -1165,9 +1066,7 @@ void initDesiredState(){
         string title = "V" + i;
         outputFile << title << ",";
     }
-
     outputFile << endl;
-
 }
 
 void saveStates(m_state *X_dyn, m_state *X_lin){
@@ -1228,4 +1127,15 @@ void saveTrajecToCSV(m_dof *U, m_state *X){
     }
 
     outputFile.close();
+}
+
+void cpMjData(const mjModel* m, mjData* d_dest, const mjData* d_src){
+    d_dest->time = d_src->time;
+    mju_copy(d_dest->qpos, d_src->qpos, m->nq);
+    mju_copy(d_dest->qvel, d_src->qvel, m->nv);
+    mju_copy(d_dest->qacc, d_src->qacc, m->nv);
+    mju_copy(d_dest->qacc_warmstart, d_src->qacc_warmstart, m->nv);
+    mju_copy(d_dest->qfrc_applied, d_src->qfrc_applied, m->nv);
+    mju_copy(d_dest->xfrc_applied, d_src->xfrc_applied, 6*m->nbody);
+    mju_copy(d_dest->ctrl, d_src->ctrl, m->nu);
 }

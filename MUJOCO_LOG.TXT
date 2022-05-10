@@ -10,3 +10,249 @@ WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Ti
 Tue Apr 26 12:58:48 2022
 WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 3.9560.
 
+Fri Apr 29 15:22:07 2022
+WARNING: Unknown warning type Time = 2.0300.
+
+Fri Apr 29 15:22:09 2022
+WARNING: Unknown warning type Time = 2.0300.
+
+Fri Apr 29 15:22:12 2022
+WARNING: Unknown warning type Time = 2.0300.
+
+Fri Apr 29 16:43:28 2022
+WARNING: Unknown warning type Time = 0.0400.
+
+Fri Apr 29 16:44:03 2022
+WARNING: Unknown warning type Time = 0.0400.
+
+Fri Apr 29 16:45:40 2022
+WARNING: Unknown warning type Time = 0.0400.
+
+Fri Apr 29 16:48:44 2022
+WARNING: Unknown warning type Time = 0.0400.
+
+Fri Apr 29 17:00:55 2022
+WARNING: Unknown warning type Time = 0.2380.
+
+Fri Apr 29 17:00:55 2022
+WARNING: Unknown warning type Time = 0.2380.
+
+Tue May  3 15:07:42 2022
+WARNING: Unknown warning type Time = 7.0300.
+
+Tue May  3 15:07:48 2022
+WARNING: Unknown warning type Time = 7.0300.
+
+Thu May  5 16:55:50 2022
+WARNING: Unknown warning type Time = 4.0080.
+
+Thu May  5 16:56:14 2022
+WARNING: Unknown warning type Time = 4.0080.
+
+Thu May  5 17:00:38 2022
+WARNING: Unknown warning type Time = 4.0080.
+
+Thu May  5 17:00:50 2022
+WARNING: Unknown warning type Time = 4.0080.
+
+Thu May  5 17:24:16 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Thu May  5 17:24:56 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Thu May  5 17:29:06 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Thu May  5 17:29:43 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Fri May  6 12:57:48 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Fri May  6 12:58:23 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Fri May  6 12:59:01 2022
+WARNING: Unknown warning type Time = 20.0000.
+
+Mon May  9 15:55:32 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 15:56:18 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 15:56:32 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 15:56:51 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 15:57:05 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 16:06:37 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 16:12:06 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Mon May  9 16:13:13 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:23:57 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:24:35 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:24:55 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:25:27 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:25:38 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:25:50 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:26:14 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:26:25 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:29:12 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:29:36 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:29:51 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:30:03 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:30:23 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:30:37 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:30:54 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:31:07 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:31:22 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:31:35 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:31:48 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:34:31 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:34:41 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:34:53 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:36:05 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:36:16 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:36:27 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:36:46 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:37:34 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:37:45 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:37:56 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:38:08 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:38:29 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:38:41 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:38:53 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:39:04 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:52:32 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:54:47 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:56:08 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:56:18 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:56:40 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:56:56 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 10:57:05 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:00:38 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:15:37 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:23:19 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:27:37 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:30:36 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:31:33 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:36:15 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 11:36:54 2022
+WARNING: Nan, Inf or huge value in QPOS at DOF 13. The simulation is unstable. Time = 0.0000.
+
+Tue May 10 13:32:10 2022
+WARNING: Unknown warning type Time = 0.0100.
+
+Tue May 10 13:32:11 2022
+WARNING: Unknown warning type Time = 0.0100.
+
+Tue May 10 13:32:17 2022
+WARNING: Unknown warning type Time = 0.0100.
+

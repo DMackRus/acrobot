@@ -13,15 +13,16 @@ extern mjrContext con;				    // custom GPU context
 extern GLFWwindow *window;
 extern MujocoController *globalMujocoController;
 extern iLQR* optimiser;
+extern frankaModel* modelTranslator;
+
+std::vector<m_ctrl> testInitControls;
+mjData* d_init_test;
 
 bool button_left = false;
 bool button_middle = false;
 bool button_right = false;
 double lastx = 0;
 double lasty = 0;
-
-m_dof *finalControls = new m_dof[ILQR_HORIZON_LENGTH];
-m_dof *initControls = new m_dof[ILQR_HORIZON_LENGTH];
 
 // keyboard callback
 void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods){
@@ -31,6 +32,50 @@ void keyboard(GLFWwindow* window, int key, int scancode, int act, int mods){
         mj_resetData(model, mdata);
         mj_forward(model, mdata);
     }
+
+    float ctrlChange = 0.02;
+    if(key == 265 && act == GLFW_PRESS ){
+        // forwards arrow
+        mdata->ctrl[0] += ctrlChange;
+    }
+    else if(key == 263 && act == GLFW_PRESS ){
+        // back arrow
+        mdata->ctrl[0] -= ctrlChange;
+    }
+    else if(key == 264 && act == GLFW_PRESS ){
+        // left arrow
+        mdata->ctrl[1] += ctrlChange;
+    }
+    else if(key == 262 && act == GLFW_PRESS ){
+        // right arrow
+        mdata->ctrl[1] -= ctrlChange;
+    }
+    else if(key == 257 && act == GLFW_PRESS ){
+        //enter key
+        m_state collState;
+        //collState = modelTranslator->returnState(mdata);
+        //collState(0) += 0.00001;
+        collState << 0, 0, 0.02, 0, 0, 0, 0, 0;
+
+        modelTranslator->setState(mdata, collState);
+        mj_forward(model, mdata);
+        m_dof accels;
+        accels = modelTranslator->returnAccelerations(mdata);
+        cout << "accelerations: " << endl << accels << endl;
+        mju_copy(mdata->qacc_warmstart, mdata->qacc, model->nv);
+        for( int rep=1; rep<5; rep++ ){
+            mju_copy(mdata->qacc_warmstart, mdata->qacc, model->nv);
+            mj_forward(model, mdata);
+            //mj_forwardSkip(model, mdata, mjSTAGE_VEL, 1);
+            accels = modelTranslator->returnAccelerations(mdata);
+            cout << "accelerations: " << endl << accels << endl;
+
+        }
+
+    }
+
+    cout << "x direction ctrl: " << mdata->ctrl[0] << " y direction ctrl: " << mdata->ctrl[1] << endl;
+
 }
 
 
@@ -101,7 +146,7 @@ void windowCloseCallback(GLFWwindow * /*window*/) {
 void setupMujocoWorld(){
     char error[1000];
 
-    model = mj_loadXML("Acrobot.xml", NULL, error, 1000);
+    model = mj_loadXML("franka_emika_and_table/franka_panda.xml", NULL, error, 1000);
 
     if( !model ) {
         printf("%s\n", error);
@@ -124,6 +169,8 @@ void setupMujocoWorld(){
     mjv_defaultOption(&opt);
     mjr_defaultContext(&con);
 
+    //model->opt.gravity[2] = 0;
+
     // create scene and context
     mjv_makeScene(model, &scn, 2000);
     mjr_makeContext(model, &con, mjFONTSCALE_150);
@@ -140,7 +187,7 @@ void render(){
     // run main loop, target real-time simulation and 60 fps rendering
     int controlNum = 0;
     bool showFinalControls = true;
-    m_dof nextControl;
+    m_ctrl nextControl;
     cpMjData(model, mdata, optimiser->d_init);
     while (!glfwWindowShouldClose(window))
     {
@@ -150,10 +197,11 @@ void render(){
         //  Otherwise add a cpu timer and exit this loop when it is time to render.
         mjtNum simstart = mdata->time;
         while (mdata->time - simstart < 1.0 / 60.0){
-            nextControl = returnNextControl(controlNum, showFinalControls);
-            for(int k = 0; k < NUM_DOF; k++){
+            nextControl = optimiser->returnDesiredControl(controlNum, showFinalControls);
+            for(int k = 0; k < NUM_CTRL; k++){
                 mdata->ctrl[k] = nextControl(k);
             }
+
 
             for(int i = 0; i < NUM_MJSTEPS_PER_CONTROL; i++){
                 mj_step(model, mdata);
@@ -188,7 +236,9 @@ void render(){
 
 void render_simpleTest(){
     // run main loop, target real-time simulation and 60 fps rendering
-
+    m_state currentState;
+    int controlNum = 0;
+    cpMjData(model, mdata, d_init_test);
     while (!glfwWindowShouldClose(window))
     {
         // advance interactive simulation for 1/60 sec
@@ -196,9 +246,58 @@ void render_simpleTest(){
         //  this loop will finish on time for the next frame to be rendered at 60 fps.
         //  Otherwise add a cpu timer and exit this loop when it is time to render.
         mjtNum simstart = mdata->time;
-        while (mdata->time - simstart < 1.0 / 60.0){
-            mj_step(model, mdata);
+        while (mdata->time - simstart < 1.0 / 60.0) {
+            for (int k = 0; k < NUM_CTRL; k++) {
+                mdata->ctrl[k] = testInitControls[controlNum](k);
+            }
 
+            const std::string boxstring = "box_obstacle_1";
+            int boxId = mj_name2id(model, mjOBJ_BODY, boxstring.c_str());
+
+            m_state currState = modelTranslator->returnState(mdata);
+            //currState(9) += 0.01;
+            cout << "current state: " << currState << endl;
+            //modelTranslator->setState(mdata, currState);
+
+//            const std::string link = "panda0_link7";
+//            int linkId = mj_name2id(model, mjOBJ_BODY, link.c_str());
+//            double jointVal = globalMujocoController->return_qPosVal(boxId, true, 6);
+//            jointVal -= 0.001;
+//            globalMujocoController->set_qPosVal(boxId, true, 6, jointVal);
+
+
+//            m_quat boxQuat = globalMujocoController->returnBodyQuat(model, mdata, boxId);
+//
+//            cout << "box quat returned: " << boxQuat << endl;
+//            m_point bodyAxis = globalMujocoController->quat2Axis(boxQuat);
+//            cout << "box axis returned: " << bodyAxis << endl;
+//            bodyAxis(1) += 0.005;
+//            cout << "box axis given: " << bodyAxis << endl;
+//            boxQuat = globalMujocoController->axis2Quat(bodyAxis);
+//            cout << "box quat given: " << boxQuat << endl;
+//            globalMujocoController->setBodyQuat(model, mdata, boxId, boxQuat);
+
+//            m_quat boxQuat = globalMujocoController->returnBodyQuat(boxId);
+//
+//            m_point boxAxis = globalMujocoController->quat2Axis(boxQuat);
+//
+//            boxAxis(1) += 0.01;
+//
+//            m_quat newBoxQuat = globalMujocoController->axis2Quat(boxAxis);
+//            globalMujocoController->setBodyQuat(boxId, newBoxQuat);
+//
+
+            for (int i = 0; i < NUM_MJSTEPS_PER_CONTROL; i++) {
+                mj_step(model, mdata);
+            }
+
+            controlNum++;
+
+            if (controlNum >= ILQR_HORIZON_LENGTH) {
+                controlNum = 0;
+                cpMjData(model, mdata, d_init_test);
+                simstart = mdata->time;
+            }
         }
 
         // get framebuffer viewport
@@ -231,20 +330,7 @@ void updateScreen(){
 void initMujoco(){
 
     setupMujocoWorld();
-    globalMujocoController = new MujocoController(model, mdata);
+    globalMujocoController = new MujocoController();
     updateScreen();
 
-}
-
-m_dof returnNextControl(int controlNum, bool finalControl){
-    m_dof nextControl;
-
-    if(finalControl){
-        nextControl = finalControls[controlNum];
-    }
-    else{
-        nextControl = initControls[controlNum];
-    }
-
-    return nextControl;
 }

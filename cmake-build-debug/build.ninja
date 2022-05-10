@@ -77,6 +77,27 @@ build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o: CXX_COM
   OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
   OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR
 
+build CMakeFiles/Mujoco_Acrobot_Control.dir/model/acrobotModel.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/model/acrobotModel.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
+  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/model/acrobotModel.cpp.o.d
+  FLAGS = -g -O0 -std=gnu++14
+  INCLUDES = -I/home/david/projects/Mujoco_Acrobot_Control/mujoco/include -I//include/eigen3 -isystem /home/david/Libraries/eigen-3.4.0
+  OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
+  OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir/model
+
+build CMakeFiles/Mujoco_Acrobot_Control.dir/model/boxPushBoxModel.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/model/boxPushBoxModel.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
+  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/model/boxPushBoxModel.cpp.o.d
+  FLAGS = -g -O0 -std=gnu++14
+  INCLUDES = -I/home/david/projects/Mujoco_Acrobot_Control/mujoco/include -I//include/eigen3 -isystem /home/david/Libraries/eigen-3.4.0
+  OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
+  OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir/model
+
+build CMakeFiles/Mujoco_Acrobot_Control.dir/model/frankaArmAndBox.cpp.o: CXX_COMPILER__Mujoco_Acrobot_Control_Debug /home/david/projects/Mujoco_Acrobot_Control/model/frankaArmAndBox.cpp || cmake_object_order_depends_target_Mujoco_Acrobot_Control
+  DEP_FILE = CMakeFiles/Mujoco_Acrobot_Control.dir/model/frankaArmAndBox.cpp.o.d
+  FLAGS = -g -O0 -std=gnu++14
+  INCLUDES = -I/home/david/projects/Mujoco_Acrobot_Control/mujoco/include -I//include/eigen3 -isystem /home/david/Libraries/eigen-3.4.0
+  OBJECT_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir
+  OBJECT_FILE_DIR = CMakeFiles/Mujoco_Acrobot_Control.dir/model
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target Mujoco_Acrobot_Control
@@ -85,7 +106,7 @@ build CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o: CXX_COM
 #############################################
 # Link the executable ../Mujoco_Acrobot_Control
 
-build ../Mujoco_Acrobot_Control: CXX_EXECUTABLE_LINKER__Mujoco_Acrobot_Control_Debug CMakeFiles/Mujoco_Acrobot_Control.dir/main.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoUI.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoController.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o | ../mujoco/include/libmujoco210.so ../mujoco/include/libglfw.so.3
+build ../Mujoco_Acrobot_Control: CXX_EXECUTABLE_LINKER__Mujoco_Acrobot_Control_Debug CMakeFiles/Mujoco_Acrobot_Control.dir/main.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoUI.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/Utility/MujocoController/MujocoController.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/iLQR/iLQR_dataCentric.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/model/acrobotModel.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/model/boxPushBoxModel.cpp.o CMakeFiles/Mujoco_Acrobot_Control.dir/model/frankaArmAndBox.cpp.o | ../mujoco/include/libmujoco210.so ../mujoco/include/libglfw.so.3
   FLAGS = -g -O0
   LINK_LIBRARIES = -Wl,-rpath,/home/david/projects/Mujoco_Acrobot_Control/mujoco/include  -lmujoco210  ../mujoco/include/libglfw.so.3  -lGL  -lglew  -lGL
   LINK_PATH = -L/home/david/projects/Mujoco_Acrobot_Control/mujoco/include

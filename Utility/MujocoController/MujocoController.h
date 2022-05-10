@@ -55,7 +55,7 @@ enum controlStates{
 
 class MujocoController {
 public:
-    MujocoController(mjModel* m, mjData* d);
+    MujocoController();
 
     mjModel* _model;
     mjData* _data;
@@ -88,16 +88,31 @@ public:
     m_pose returnBodyVelocities(int bodyId);
     m_pose returnBodyAcceleration(int bodyId);
     m_pose returnBodyForces(int bodyId);
-    void setRobotConfiguration(const Ref<const m_dof> configuration);
-    m_dof returnRobotConfiguration();
-    void setRobotVelocities(const Ref<const m_dof> jointVelocities);
-    m_dof returnRobotVelocities();
-    void setRobotAccelerations(const Ref<const m_dof> jointAccelerations);
-    m_dof returnRobotAccelerations();
+    void setRobotConfiguration(const Ref<const m_ctrl> configuration);
+    m_ctrl returnRobotConfiguration();
+    void setRobotVelocities(const Ref<const m_ctrl> jointVelocities);
+    m_ctrl returnRobotVelocities();
+    void setRobotAccelerations(const Ref<const m_ctrl> jointAccelerations);
+    m_ctrl returnRobotAccelerations();
 
-    struct pose returnEndEffectorPos();
 
-    bool isConfigInCollision(m_dof configuration);
+    m_quat axis2Quat(m_point axis);
+    m_point quat2Axis(m_quat quaternion);
+    m_point quat2Eul(m_quat quaternion);
+    m_quat invQuat(m_quat quat);
+    m_quat multQuat(m_quat quat_l, m_quat quat_r);
+
+    void set_qPosVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis, double val);
+    void set_qVelVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis, double val);
+    double return_qPosVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis);
+    double return_qVelVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis);
+
+    m_point returnBodyPoint(mjModel *m, mjData *d, int bodyId);
+    m_pose returnBodyPose(mjModel *m, mjData *d, int bodyId);
+    m_quat returnBodyQuat(mjModel *m, mjData *d, int bodyId);
+    void setBodyQuat(mjModel *m, mjData *d, int bodyId, m_quat bodyQuat);
+
+    bool isConfigInCollision(m_ctrl configuration);
     int getRobotNumberOfCollisions();
 
     void saveSimulationState();
@@ -108,7 +123,7 @@ public:
 
     void step();
 
-    Eigen::MatrixXd calculateJacobian(int bodyId);
+    Eigen::MatrixXd calculateJacobian(mjModel *m, mjData *d, int bodyId);
     int returnModelID(const std::string& input);
 };
 

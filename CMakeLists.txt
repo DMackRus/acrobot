@@ -34,6 +34,6 @@ link_directories(${Mujoco_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} main.cpp
         Utility/MujocoController/MujocoUI.cpp Utility/MujocoController/MujocoUI.h
         Utility/MujocoController/MujocoController.cpp Utility/MujocoController/MujocoController.h
-        iLQR/iLQR_dataCentric.cpp iLQR/iLQR_dataCentric.h)
+        iLQR/iLQR_dataCentric.cpp iLQR/iLQR_dataCentric.h model/acrobotModel.cpp model/acrobotModel.h model/boxPushBoxModel.cpp model/boxPushBoxModel.h model/frankaArmAndBox.cpp model/frankaArmAndBox.h)
 
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen ${LIB_MUJOCO} ${GLFW} libGL.so libglew.so GL)

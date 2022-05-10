@@ -13,41 +13,36 @@
 #include <string>
 #include <vector>
 
-#define NUM_DOF 2
-#define NUM_STATES 4
+#define DOF 10
+#define NUM_CTRL 7
 #define NUM_JOINTS 0
-// Theta 1 - 7, theta dot 1 - 7, x, z of cube
+#define PI 3.141519265
 
 using namespace Eigen;
 using namespace std;
 using namespace std::chrono;
 
-struct point3D {
-    double x;
-    double y;
-    double z;
-};
-
-struct pose {
-    struct point3D pos;
-    double roll;
-    double pitch;
-    double yaw;
-};
-
-struct config {
-    double jointAngles[NUM_DOF];
+enum VecPos{
+    x,
+    y,
+    z
 };
 
 
+typedef Vector<double, 3> m_point;
+typedef Vector<double, 4> m_quat;
 typedef Vector<double, 6> m_pose;
 
-typedef Matrix<double, NUM_DOF, 1> m_dof;
-typedef Matrix<double, NUM_STATES, 1> m_state;
+typedef Matrix<double, NUM_CTRL, 1> m_ctrl;
+typedef Matrix<double, (2*DOF), 1> m_state;
+typedef Matrix<double, DOF, 1> m_dof;
 
-typedef Matrix<double, NUM_STATES, NUM_STATES> m_state_state;
-typedef Matrix<double, NUM_STATES, NUM_DOF> m_state_dof;
-typedef Matrix<double, NUM_DOF, NUM_STATES> m_dof_state;
-typedef Matrix<double, NUM_DOF, NUM_DOF> m_dof_dof;
+
+typedef Matrix<double, (2*DOF), (2*DOF)> m_state_state;
+typedef Matrix<double, (2*DOF), NUM_CTRL> m_state_ctrl;
+typedef Matrix<double, NUM_CTRL, (2*DOF)> m_ctrl_state;
+typedef Matrix<double, NUM_CTRL, NUM_CTRL> m_ctrl_ctrl;
+typedef Matrix<double, DOF, DOF> m_dof_dof;
+typedef Matrix<double, DOF, NUM_CTRL> m_dof_ctrl;
 
 #endif //MUJOCO_SANDBOX_STDINCLUDE_H

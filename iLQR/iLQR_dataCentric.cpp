@@ -95,7 +95,7 @@ void iLQR::optimise(){
         }
 
         if(!lamdaExit){
-            // STEP 3 - Forwards pass to calculate new optimal controls - with optional alpha binary search
+            // STEP 3 - Forwards pass to calculate new optimal controls - with optional alpha backtracking line search
             newCost = forwardsPass(oldCost);
 
             // STEP 4 - Check for convergence
@@ -136,9 +136,8 @@ void iLQR::getDerivatives(){
     // Linearise the dynamics along the trajectory
     for(int t = 0; t < ILQR_HORIZON_LENGTH; t++){
         // Calculate linearised dynamics for current time step via finite differencing
-        //lineariseDynamicsSerial_trial(A_test, B_test, t);
-        //lineariseDynamicsSerial_trial(A, B, t, MUJOCO_DT);
         lineariseDynamicsSerial_trial_step(A, B, t, MUJOCO_DT);
+        //lineariseDynamicsSerial_trial_step(A, B, t, MUJOCO_DT);
 
         //cout << "A: " << endl << A << endl;
         //cout << "B: " << endl << B << endl;
@@ -303,16 +302,12 @@ void iLQR::backwardsPass_Vxx_reg(){
 bool iLQR::isMatrixPD(Ref<MatrixXd> matrix){
     bool matrixPD = true;
     //TODO implement cholesky decomp for PD check and maybe use result for inverse Q_uu
-    //cout << "matrix is: " << endl << matrix << endl;
 
-    if(matrix(0,0) < 0){
+    Eigen::LLT<Eigen::MatrixXd> lltOfA(matrix); // compute the Cholesky decomposition of the matrix
+    if(lltOfA.info() == Eigen::NumericalIssue)
+    {
         matrixPD = false;
-    }
-
-    double det = (matrix(0, 0) * matrix(1,1)) - (matrix(0,1) * matrix(1,0));
-
-    if(det < 0){
-        matrixPD = false;
+        //throw std::runtime_error("Possibly non semi-positive definitie matrix!");
     }
 
     return matrixPD;
@@ -523,7 +518,7 @@ void iLQR::lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int
 
     // Initialise variables
     static int nwarmup = 3;
-    float eps = 1e-6;
+    float eps = 1e-2;
 
     _A.block(0, 0, DOF, DOF).setIdentity();
     _A.block(0, DOF, DOF, DOF).setIdentity();
@@ -600,7 +595,7 @@ void iLQR::lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int
 
         // copy and store +perturbation
         acellInc = modelTranslator->returnAccelerations(saveData);
-        cout << "acellInc " << endl << acellInc << endl;
+        //cout << "acellInc " << endl << acellInc << endl;
 
         // perturb velocity -
         modelTranslator->perturbVelocity(saveData, dArray[controlNum], i, -eps);
@@ -610,13 +605,13 @@ void iLQR::lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int
         mj_forwardSkip(model, saveData, mjSTAGE_POS, 1);
 
         acellDec = modelTranslator->returnAccelerations(saveData);
-        cout << "acellDec " << endl << acellDec << endl;
+        //cout << "acellDec " << endl << acellDec << endl;
 
         // compute column i of derivative 1
         for(int j = 0; j < DOF; j++){
             dqaccdqvel(j, i) = (acellInc(j) - acellDec(j))/(2*eps);
         }
-        cout << "dq/dvel " << endl << dqaccdqvel << endl;
+        //cout << "dq/dvel " << endl << dqaccdqvel << endl;
 
         // undo perturbation
         cpMjData(model, saveData, dArray[controlNum]);
@@ -701,7 +696,11 @@ void iLQR::lineariseDynamicsSerial_trial(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int
 void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B, int controlNum, float dt){
     // Initialise variables
     static int nwarmup = 3;
-    float eps = 1e-1;
+    // best found so far, 1e-1 eps, 1 stpe linearisation, 0.002 control size
+
+    //float epsControls[NUM_CTRL] = {1e-1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+    //float epsVelocities[DOF] = {1e-1, 1e-1, 1e-1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1e-1};
+    float eps = 1e-2;
     //int numStepsLinearisation = NUM_MJSTEPS_PER_CONTROL * 1;
     int numStepsLinearisation = 1;
 
@@ -726,8 +725,10 @@ void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B
     // Allocate memory for variables
     mjtNum* warmstart = mj_stackAlloc(saveData, DOF);
 
+    //cout << "accel before: " << saveData->qacc[0] << endl;
     // Compute mj_forward once with no skips
     mj_forward(model, saveData);
+    //cout << "accel before: " << saveData->qacc[0] << endl;
 
     // Compute mj_forward a few times to allow optimiser to get a more accurate value for qacc
     // skips position and velocity stages (TODO LOOK INTO IF THIS IS NEEDED FOR MY METHOD)
@@ -768,7 +769,7 @@ void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B
 
         for(int j = 0; j < DOF; j++){
             //double diffScaled = (velInc(j) - velDec(j)) / (numStepsLinearisation / NUM_MJSTEPS_PER_CONTROL);
-            double diffScaled = (velInc(j) - velDec(j)) / NUM_MJSTEPS_PER_CONTROL;
+            double diffScaled = (velInc(j) - velDec(j));
             dqaccdctrl(j, i) = diffScaled/(2*eps);
         }
         //cout << "dqaccdctrl " << endl << dqaccdctrl << endl;
@@ -842,7 +843,7 @@ void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B
         // compute column i of derivative 1
         for(int j = 0; j < DOF; j++){
             //double diffScaled = (velInc(j) - velDec(j)) / (numStepsLinearisation / NUM_MJSTEPS_PER_CONTROL);
-            double diffScaled = (velInc(j) - velDec(j)) / NUM_MJSTEPS_PER_CONTROL;
+            double diffScaled = (velInc(j) - velDec(j));
             dqaccdqvel(j, i) = diffScaled/(2*eps);
         }
         //cout << "dqaccdqvel " << endl << dqaccdqvel << endl;
@@ -851,38 +852,37 @@ void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B
         cpMjData(model, saveData, dArray[controlNum]);
     }
 
-    // CALCULATE dqaccdcqpos
-//    for(int i = 0; i < DOF; i++){
-//        // perturb position +
-//        modelTranslator->perturbPosition(saveData, dArray[controlNum], i, eps);
-//
-//
-//        // evaluate dynamics, with center warmstart
-//        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
-//        mj_step(model, saveData);
-//        velInc = modelTranslator->returnVelocities(saveData);
-//
-//        // perturb position -
-//        modelTranslator->perturbPosition(saveData, dArray[controlNum], i, -eps);
-//
-//        // evaluate dynamics, with center warmstart
-//        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
-//        mj_step(model, saveData);
-//
-//        // Additional mj_forward steps when computing dqac/dqpos
+     //CALCULATE dqaccdcqpos
+    for(int i = 0; i < DOF; i++){
+        // perturb position +
+        modelTranslator->perturbPosition(saveData, dArray[controlNum], i, eps);
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_step(model, saveData);
+        velInc = modelTranslator->returnVelocities(saveData);
+
+        // perturb position -
+        modelTranslator->perturbPosition(saveData, dArray[controlNum], i, -eps);
+
+        // evaluate dynamics, with center warmstart
+        mju_copy(saveData->qacc_warmstart, warmstart, model->nv);
+        mj_step(model, saveData);
+
+        // Additional mj_forward steps when computing dqac/dqpos
 //        for( int rep=1; rep<nwarmup; rep++ )
 //            mj_forwardSkip(model, saveData, mjSTAGE_NONE, 1);
-//
-//        velDec = modelTranslator->returnVelocities(saveData);
-//
-//        // compute column i of derivative 1
-//        for(int j = 0; j < DOF; j++){
-//            dqaccdq(j, i) = (velInc(j) - velDec(j))/(2*eps);
-//        }
-//
-//        // undo perturbation
-//        cpMjData(model, saveData, dArray[controlNum]);
-//    }
+
+        velDec = modelTranslator->returnVelocities(saveData);
+
+        // compute column i of derivative 1
+        for(int j = 0; j < DOF; j++){
+            dqaccdq(j, i) = (velInc(j) - velDec(j))/(2*eps);
+        }
+
+        // undo perturbation
+        cpMjData(model, saveData, dArray[controlNum]);
+    }
 
     mj_deleteData(saveData);
 
@@ -890,7 +890,7 @@ void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B
 //    cout << " dqaccdqvel: " << dqaccdqvel << endl;
     //cout << " dqaccdctrl: " << dqaccdctrl << endl;
 
-    //_A.block(DOF, 0, DOF, DOF) = dqaccdq * ilqr_dt;
+    _A.block(DOF, 0, DOF, DOF) = dqaccdq;
     _A.block(DOF, DOF, DOF, DOF).setIdentity();
     _A.block(DOF, DOF, DOF, DOF) = dqaccdqvel;
     //_B.block(DOF, 0, DOF, NUM_CTRL) = dqaccdctrl * dt;
@@ -898,7 +898,7 @@ void iLQR::lineariseDynamicsSerial_trial_step(Ref<MatrixXd> _A, Ref<MatrixXd> _B
 
     //cout << "A matrix is: " << _A << endl;
     //cout << " B Mtrix is: " << _B << endl;
-    int a =1;
+    int a = 1;
 
 }
 

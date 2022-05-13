@@ -106,6 +106,7 @@ public:
     void set_qVelVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis, double val);
     double return_qPosVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis);
     double return_qVelVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis);
+    double return_qAccVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis);
 
     m_point returnBodyPoint(mjModel *m, mjData *d, int bodyId);
     m_pose returnBodyPose(mjModel *m, mjData *d, int bodyId);

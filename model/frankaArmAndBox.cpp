@@ -173,22 +173,19 @@ m_dof frankaModel::returnVelocities(mjData *d){
     return velocities;
 }
 
-//TODO fix this function same as velocities and add mujoco controlelr functionality
 m_dof frankaModel::returnAccelerations(mjData *d){
     m_dof accelerations;
 
     for(int i = 0; i < NUM_CTRL; i++){
-        accelerations(i) = d->qacc[i];
+        int bodyId = mj_name2id(model, mjOBJ_BODY, stateNames[i].c_str());
+        accelerations(i) = globalMujocoController->return_qAccVal(model, d, bodyId, false, 0);
     }
 
-    const std::string boxstring = "box_obstacle_1";
-    int boxId = mj_name2id(model, mjOBJ_BODY, boxstring.c_str());
-    int jointIndex = model->body_jntadr[boxId];
+    int boxId = mj_name2id(model, mjOBJ_BODY, stateNames[7].c_str());
+    accelerations(NUM_CTRL) = globalMujocoController->return_qAccVal(model, d, boxId, true, 0);
+    accelerations(NUM_CTRL + 1) = globalMujocoController->return_qAccVal(model, d, boxId, true, 1);
+    accelerations(NUM_CTRL + 2) = globalMujocoController->return_qAccVal(model, d, boxId, true, 4);
 
-    accelerations(7) = d->qacc[9];
-    accelerations(8) = d->qacc[10];
-
-    accelerations(9) = d->qacc[jointIndex + 4];
 
     return accelerations;
 }

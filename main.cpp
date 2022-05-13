@@ -12,7 +12,7 @@
 #include "mujoco.h"
 
 #define RUN_ILQR 1
-#define TEST_LINEARISATION 0
+#define TEST_LINEARISATION 1
 
 
 extern MujocoController *globalMujocoController;
@@ -60,9 +60,10 @@ int main() {
             0, 0, 0;
 
     X_desired << 0 ,0.88, 0.0297, -1.13, -0.0593, 0, 0,
-            0.8, 0, 0,
+            0.8, 0.3, 0,
             0, 0, 0, 0, 0, 0, 0,
             0, 0, 0;
+
 
     if(RUN_ILQR){
 
@@ -310,11 +311,13 @@ void testILQR(m_state X0){
         X_lin.push_back(m_state());
     }
 
-    X_lin[0] = X0;
-    X_dyn[0] = X0;
+
 
     double cubeVelDiff = 0.0f;
 
+    bool firstXDot = true;
+    m_state prevXDot;
+    m_ctrl prevControl;
     if(TEST_LINEARISATION){
         for(int i = 0;  i < ILQR_HORIZON_LENGTH; i++){
             MatrixXd A = ArrayXXd::Zero((2 * DOF), (2 * DOF));
@@ -322,99 +325,110 @@ void testILQR(m_state X0){
             MatrixXd A_dt = ArrayXXd::Zero((2 * DOF), (2 * DOF));
             MatrixXd B_dt = ArrayXXd::Zero((2 * DOF), NUM_CTRL);
 
-            optimiser->lineariseDynamicsSerial_trial_step(A, B, i, MUJOCO_DT);
             //optimiser->lineariseDynamicsSerial_trial(A, B, i, ILQR_DT);
 
-            optimiser->scaleLinearisation(A_dt, B_dt, A, B, 1);
-            m_ctrl appliedControl = modelTranslator->returnControls(optimiser->dArray[i]);
+            //optimiser->scaleLinearisation(A_dt, B_dt, A, B, 1);
 
-            //cout << "A is: " << A << endl << "A_dt " << A_dt << endl;
+            if(i == 0){
+                // set X0 dyn and lin as the initial state of the system
+                X_dyn[0] = modelTranslator->returnState(optimiser->dArray[0]);
+                X_lin[0] = modelTranslator->returnState(optimiser->dArray[0]);
 
-            m_state A_temp = (A_dt * X_dyn[i]);
-            m_state B_temp = (B_dt * appliedControl);
-            X_lin[i + 1] = (A_dt * X_dyn[i]) + (B_dt * appliedControl);
+                m_dof velocities = modelTranslator->returnVelocities(mdata);
+                m_dof accelerations = modelTranslator->returnAccelerations(mdata);
+                for(int j = 0; j < DOF; j++){
+                    prevXDot(j) = velocities(j);
+                    prevXDot(j + DOF) = accelerations(j);
+                }
 
-            for(int i = 0; i < NUM_MJSTEPS_PER_CONTROL; i++){
-                mj_step(model, mdata);
+                X_dyn[1] = modelTranslator->returnState(optimiser->dArray[1]);
+                X_lin[1] = modelTranslator->returnState(optimiser->dArray[1]);
             }
-
-            X_dyn[i + 1] = modelTranslator->returnState(optimiser->dArray[i]);
-
-            m_state xdot_lin;
-            m_state actual_x_dot;
-
-            m_state diff = X_dyn[i+1] - X_lin[i+1];
-
-            if(diff(6) > 1 or diff(6) < -1){
-                cout << "diff is: " << diff << endl;
-                cout << "X_lin was: " << X_lin[i+1] << endl;
-                cout << "X_dyn was: " << X_dyn[i+1] << endl;
-                cout << "A matrix was: " << A_dt << endl;
-                cout << "A part was: " << A_temp << endl;
-                cout << "B part was: " << B_temp << endl;
-                int a = 1;
-            }
-
-            if(i == 1250){
-                cout << "X_lin was: " << X_lin[i+1] << endl;
-                cout << "X_dyn was: " << X_dyn[i+1] << endl;
-                cout << "A matrix unscaled: " << A << endl;
-                cout << "B matrix unscaled: " << B << endl;
-                cout << "A matrix was: " << A_dt << endl;
-                cout << "B matrix was: " << B_dt << endl;
-                cout << "A part was: " << A_temp << endl;
-                cout << "B part was: " << B_temp << endl;
-                int a = 1;
-            }
-
-            cubeVelDiff += pow(((X_lin[i + 1](17) - X_dyn[i + 1](17)) * ILQR_DT),2);
-
-
-            //xdot_lin = X_lin[i+1] - X_lin[i];
-            //actual_x_dot = X_dyn[i+1] - X_dyn[i];
-
-//            cout << "xdot linearising was: " << endl;
-//            cout << xdot_lin << endl;
-//            cout << "xdot from dynamics was: " << endl;
-//            cout << actual_x_dot << endl;
-//            cout << "XLin is: " << endl;
-//            cout << X_lin[i+1] << endl;
-//            cout << "XDyn is: " << endl;
-//            cout << X_dyn[i+1] << endl;
-
-//            m_state A_temp = (A * X_dyn[i]);
-//            m_state B_temp = (B * initControls[i]);
-//            //cout << "A part is: " << endl << A_temp << endl;
-//            //cout << "b part is: " << endl << B_temp << endl;
-//            cout << "A" << endl << A_dt << endl;
-//            cout << "B" << endl << B_dt << endl;
-
-            //diff = (actual_x_dot - xdot_lin);
-
-//            for(int j = 0; j < NUM_STATES; j++){
-//                if(diff(j) > 0.1){
-//                    cout << "index: " << j << endl;
-//                    int a = 1;
-//                }
-//                if(diff(j) < -0.1){
-//                    cout << "index: " << j << endl;
-//                    int a = 1;
-//                }
-//            }
-
-//            for(int  j = 0; j < NUM_STATES; j++){
-//                sumDiff[j] += pow((X_dyn[i](j) - X_lin[i](j)), 2);
+//            else if(i == 1){
+//                // calculate X1 dyn via mj_step, set X1_lin to this alsogetDerivatives as we dont have enough information yet for linearisation
+//                X_dyn[i] = modelTranslator->returnState(optimiser->dArray[i]);
+//                X_lin[i] = modelTranslator->returnState(optimiser->dArray[i]);
 //
+//                m_ctrl appliedControl = modelTranslator->returnControls(optimiser->dArray[i]);
+//                modelTranslator->setControls(mdata, appliedControl);
+//
+//                for(int k = 0; k < NUM_MJSTEPS_PER_CONTROL; k++){
+//                    mj_step(model, mdata);
+//                }
+//
+//                m_dof velocities = modelTranslator->returnVelocities(mdata);
+//                m_dof accelerations = modelTranslator->returnAccelerations(mdata);
+//                for(int j = 0; j < DOF; j++){
+//                    prevXDot(j) = velocities(j);
+//                    prevXDot(j + DOF) = accelerations(j);
+//                }
 //            }
-        }
+            else{
+                // Calculate X bar and U bar at current iteration by comparing current state and control with last state and control
+                m_state currentState_dyn, lastState_dyn, X_bar;
+                m_ctrl currentControl, lastControl, U_bar;
+                m_state X_bar_dot, X_dot;
+                X_dyn[i] = modelTranslator->returnState(optimiser->dArray[i]);
 
-//        cout << "sum squared diff at end: " << endl;
-//        float totalBadness = 0.0f;
-//        for(int i = 0; i < NUM_STATES; i++){
-//            cout << sumDiff[i] << " "  << endl;
-//            totalBadness += sumDiff[i];
-//        }
-//        cout << "total badness: " << totalBadness << endl;
+                currentState_dyn = X_dyn[i].replicate(1,1);
+                lastState_dyn = X_dyn[i - 1].replicate(1,1);
+                X_bar = currentState_dyn - lastState_dyn;
+
+                lastControl = modelTranslator->returnControls(optimiser->dArray[i-1]);
+                currentControl = modelTranslator->returnControls(optimiser->dArray[i]);
+                U_bar = currentControl - lastControl;
+
+                // Calculate A and B matrices by linearising around previous state
+                optimiser->lineariseDynamicsSerial_trial_step(A, B, i-1, MUJOCO_DT);
+
+                if(i == 2500){
+                    cout << "A is" << endl << A << endl;
+                    cout << "B is" << endl << B << endl;
+                }
+
+                // Calculate X bar dot via X(.) = Ax + BU
+                X_bar_dot = (A * X_bar) + (B * U_bar);
+
+                // Calculate current X dot via X(.)(t) = X(.)(t-1) + X_bar_dot
+                X_dot = prevXDot + X_bar_dot;
+
+                // Calculate next state via linearisation using euler integration of current X_dot
+                if(1){
+                    X_lin[i + 1] = X_dyn[i] + (X_dot * MUJOCO_DT);
+                }
+                else{
+                    X_lin[i + 1] = X_lin[i] + (X_dot * MUJOCO_DT);
+                }
+
+                // update previous x_dot
+                if(1){
+                    // either use previous x dot as mujoco x dot
+                    m_dof velocities = modelTranslator->returnVelocities(optimiser->dArray[i]);
+                    m_dof accelerations = modelTranslator->returnAccelerations(optimiser->dArray[i]);
+                    for(int j = 0; j < DOF; j++){
+                        prevXDot(j) = velocities(j);
+                        prevXDot(j + DOF) = accelerations(j);
+                    }
+                }
+                else{
+                    // use linealry calculated  dot (NOTE: this will accumulate error but may be a more valid test)
+                    prevXDot = X_dot.replicate(1,1);
+                }
+
+                cubeVelDiff += pow(((X_lin[i + 1](17) - X_dyn[i + 1](17)) * ILQR_DT),2);
+
+            }
+
+            if(firstXDot){
+                firstXDot = false;
+                m_dof velocities = modelTranslator->returnVelocities(optimiser->dArray[i]);
+                m_dof accelerations = modelTranslator->returnAccelerations(optimiser->dArray[i]);
+                for(int j = 0; j < DOF; j++){
+                    prevXDot(j) = velocities(j);
+                    prevXDot(j + DOF) = accelerations(j);
+                }
+            }
+        }
         saveStates();
     }
     cout << "cube vel diff total: " << cubeVelDiff << endl;
@@ -470,7 +484,7 @@ void saveStates(){
     outputDiffDyn << "Joint 4 dyn" << "," << "Joint 4 lin" << "," << "Joint 4 diff" << "," << "Joint 5 dyn" << "," << "Joint 5 lin" << "," << "Joint 5 diff" << ",";
     outputDiffDyn << "Joint 6 dyn" << "," << "Joint 6 lin" << "," << "Joint 6 diff" << ",";
     outputDiffDyn << "Cube X dyn" << "," << "Cube X lin" << "," << "Cube X diff" << "," << "Cube Y dyn" << "," << "Cube Y lin" << "," << "Cube Y diff" << "," << "Cube rot dyn" << "," << "Cube rot lin" << "," << "Cube rot diff" << ",";
-    outputDiffDyn << "Joint 0 vel lin" << "," << "Joint 0 vel diff" << ",";
+    outputDiffDyn << "Joint 0 vel dyn" << "," << "Joint 0 vel lin" << "," << "Joint 0 vel diff" << ",";
     outputDiffDyn << "Joint 1 vel dyn" << "," << "Joint 1 vel lin" << "," << "Joint 1 vel diff" << "," << "Joint 2 vel dyn" << "," << "Joint 2 vel lin" << "," << "Joint 2 vel diff" << ",";
     outputDiffDyn << "Joint 3 vel dyn" << "," << "Joint 3 vel lin" << "," << "Joint 3 vel diff" << "," << "Joint 4 vel dyn" << "," << "Joint 4 vel lin" << "," << "Joint 4 vel diff" << ",";
     outputDiffDyn << "Joint 5 vel dyn" << "," << "Joint 5 vel lin" << "," << "Joint 5 vel diff" << "," << "Joint 6 vel dyn" << "," << "Joint 6 vel lin" << "," << "Joint 6 vel diff" << ",";

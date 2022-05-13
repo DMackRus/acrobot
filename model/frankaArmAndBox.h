@@ -17,7 +17,7 @@ public:
 
     // State vector is: 7 joint angles, two cube pos (X and Y), cube rot, 7 joint velocities, two cube velocities (X and Y)
     float stateCosts[(2 * DOF)] = {0, 0, 0, 0, 0, 0, 0,
-                                    10, 0.5, 10,
+                                    5, 5, 5,
                                     0, 0, 0, 0, 0,0, 0,
                                     0.1, 0.1};
 

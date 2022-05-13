@@ -170,6 +170,7 @@ void setupMujocoWorld(){
     mjr_defaultContext(&con);
 
     //model->opt.gravity[2] = 0;
+    model->opt.integrator = mjINT_EULER;
 
     // create scene and context
     mjv_makeScene(model, &scn, 2000);

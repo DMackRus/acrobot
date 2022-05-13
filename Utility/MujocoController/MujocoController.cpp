@@ -517,6 +517,29 @@ double MujocoController::return_qVelVal(mjModel *m, mjData *d, int bodyId, bool 
     return qVelVal;
 }
 
+double MujocoController::return_qAccVal(mjModel *m, mjData *d, int bodyId, bool freeJoint, int freeJntAxis){
+    double qAccVal;
+
+    int jointIndex = m->body_jntadr[bodyId];
+
+    // free joint axis can be any number between 0 and 5 (x, y, z, roll pitch yaw)
+    if(freeJntAxis < 0 or freeJntAxis > 5){
+        std::cout << "you have used return_qAccVal wrong!!!!!!!!!!! Freejntaxis was: " << freeJntAxis << endl;
+    }
+
+    if(!freeJoint){
+        // automatically return 1 val
+        qAccVal = d->qacc[jointIndex];
+
+    }
+    else{
+        // have to add on freeJntAxis to get desired x y or z component of free joint
+        qAccVal = d->qacc[jointIndex + freeJntAxis];
+    }
+
+    return qAccVal;
+}
+
 m_point MujocoController::returnBodyPoint(mjModel *m, mjData *d, int bodyId){
     m_point bodyPos;
 

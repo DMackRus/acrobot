@@ -21,16 +21,20 @@
 
     <worldbody>
 
-		<body pos="0 0 0" name="actuated_box">
+		<body pos="0 0 0.081" name="actuated_box">
 			<joint name="actuatedBox" type="free"/>
 			<!-- <joint name="actuatedBox" type="free" axis="0 1 0"/> -->
-			<geom type = "cylinder" pos = "0 0 0" size = "0.03 0.03 0.03" mass="0.1" rgba = "0 1 0 0.8" solimp="0 0.4 0.001 0.9 6" solref = "0.02 1" margin = "0.001"/>
+			<!-- solimp="0.95 0.99 0.0001 0.9 6" solref = "0.2 1" -->
+			<geom type = "cylinder" pos = "0 0 0" size = "0.03 0.08" mass="10" rgba = "0 1 0 0.8" solimp="0.2 0.4 0.001 0.9 6" solref = "-25 -2"  margin = "0.001"/>
 
 		</body>
 
-		<body pos="0.1 0.04 0" name="unactuated_box">
+		<!-- 0.031 -->
+		<!-- solimp="0 0.4 0.001 0.1 1" solref = "0.02 1" " -->
+		<body pos="0.4 0.04 0.031" name="unactuated_box">
 			<joint type="free" />
-			<geom type = "box" pos = "0 0 0" size = "0.03 0.03 0.03" mass="0.01" rgba = "1 0 0 0.8" solimp="0 0.4 0.001 0.9 6" solref = "0.02 1" margin = "0.001"/>
+			<!-- solimp="0.95 0.99 0.0001 0.9 6"  -->
+			<geom type = "box" pos = "0 0 0" size = "0.06 0.06 0.03" mass="0.1" rgba = "1 0 0 0.8" solimp="0.2 0.4 0.001 0.9 6" solref = "-2500 -5" friction = "0.1 0.1 0.1"  margin = "0.001"/>
 
 		</body>
 
@@ -42,6 +46,7 @@
 		-->
 
 
+		<!--
 		<body pos="0.7 0.3 0" name="Goal_post2">
 			<joint type="free" />
 			<geom type = "box" pos = "0 0 0" size = "0.01 0.08 0.03" mass="100" rgba = "0 0 1 0.8" />
@@ -52,6 +57,7 @@
 			<joint type="free" />
 			<geom type = "box" pos = "0 0 0" size = "0.08 0.01 0.03" mass="100" rgba = "0 0 1 0.8" />
 		</body>
+		-->
 
     </worldbody>
 
